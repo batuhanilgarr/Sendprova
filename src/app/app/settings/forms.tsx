@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { saveGroup, saveSender, testSenderConnection, type ActionState } from "./actions";
+import { saveClient, saveGroup, saveSender, testSenderConnection, type ActionState } from "./actions";
 
 function Status({ state }: { state: ActionState }) {
   if (!state) return null;
@@ -96,6 +96,31 @@ export function GroupForm({ initial }: { initial?: { id: string; name: string; e
         <Textarea name="emails" defaultValue={initial?.emails} rows={4} className="font-mono text-xs" required />
       </Field>
       <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+        <Status state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function ClientForm({ initial }: { initial?: { id: string; name: string; contactName: string; contactEmail: string; color: string } }) {
+  const [state, action, pending] = useActionState(saveClient, null);
+  return (
+    <form action={action} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {initial && <input type="hidden" name="id" value={initial.id} />}
+      <Field label="Client name" className="sm:col-span-2">
+        <Input name="name" defaultValue={initial?.name} placeholder="Acme Bank" required />
+      </Field>
+      <Field label="Contact name">
+        <Input name="contactName" defaultValue={initial?.contactName} placeholder="Jane Doe" />
+      </Field>
+      <Field label="Contact email" hint="(receives review invitations)">
+        <Input name="contactEmail" type="email" defaultValue={initial?.contactEmail} placeholder="jane@acme.com" />
+      </Field>
+      <Field label="Brand color" hint="(hex, optional)">
+        <Input name="color" defaultValue={initial?.color} placeholder="#4F46E5" className="font-mono" />
+      </Field>
+      <div className="sm:col-span-2 flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
         <Status state={state} />
       </div>

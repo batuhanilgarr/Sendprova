@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { currentWorkspace } from "@/lib/session";
 import { ensureDefaultSender, smtpConfigSchema } from "@/lib/mailer";
-import { deleteGroup, deleteSender, setDefaultSender } from "./actions";
-import { GroupForm, SenderForm, TestConnectionButton } from "./forms";
+import { deleteClient, deleteGroup, deleteSender, setDefaultSender } from "./actions";
+import { ClientForm, GroupForm, SenderForm, TestConnectionButton } from "./forms";
 
 export const metadata = { title: "Settings" };
 
@@ -15,6 +15,9 @@ export default function SettingsPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 flex flex-col gap-10">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
+        <Clients />
+      </Suspense>
+      <Suspense fallback={null}>
         <Senders />
       </Suspense>
       <Suspense fallback={null}>
@@ -136,6 +139,50 @@ async function Groups() {
         <li className="rounded-xl border border-dashed p-4">
           <h3 className="font-medium mb-3">New group</h3>
           <GroupForm />
+        </li>
+      </ul>
+    </section>
+  );
+}
+
+async function Clients() {
+  await connection();
+  const workspace = await currentWorkspace();
+  const clients = await db.client.findMany({
+    where: { workspaceId: workspace.id },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { projects: true } } },
+  });
+
+  return (
+    <section>
+      <SectionHeader title="Clients" description="Your customers. Projects are grouped by client and review invitations go to the client contact." />
+      <ul className="flex flex-col gap-3">
+        {clients.map((c) => (
+          <li key={c.id} className="rounded-xl border bg-card">
+            <div className="flex items-center gap-3 px-4 py-3 border-b">
+              <span className="size-3 rounded-full border" style={{ background: c.color ?? "transparent" }} aria-hidden />
+              <span className="font-medium">{c.name}</span>
+              <Badge variant="secondary">{c._count.projects} projects</Badge>
+              {c.contactEmail && <span className="text-muted-foreground font-mono text-xs truncate">{c.contactEmail}</span>}
+              <form action={deleteClient} className="ml-auto">
+                <input type="hidden" name="id" value={c.id} />
+                <Button type="submit" variant="destructive" size="sm">
+                  Delete
+                </Button>
+              </form>
+            </div>
+            <details>
+              <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
+              <div className="px-4 pb-4">
+                <ClientForm initial={{ id: c.id, name: c.name, contactName: c.contactName ?? "", contactEmail: c.contactEmail ?? "", color: c.color ?? "" }} />
+              </div>
+            </details>
+          </li>
+        ))}
+        <li className="rounded-xl border border-dashed p-4">
+          <h3 className="font-medium mb-3">New client</h3>
+          <ClientForm />
         </li>
       </ul>
     </section>

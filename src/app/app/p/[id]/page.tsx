@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { Preview } from "@/components/preview";
+import { AgencyComments, AgencyPreview, NotifyClientForm } from "@/components/agency-review";
+import { StatusBadge } from "@/components/review-workbench";
+import { toThreads } from "@/lib/threads";
 import { SendPanel } from "@/components/send-panel";
 import { ShareDialog } from "@/components/share-dialog";
 import { shareUrl } from "@/lib/share";
@@ -14,7 +16,8 @@ import { checkResultSchema, type CheckResult } from "@/lib/checks";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { ensureDefaultSender } from "@/lib/mailer";
-import { runChecksAction } from "./actions";
+import { runChecksAction, setClientAction, setStatusAction } from "./actions";
+import { latestApproval, listComments } from "@/lib/review";
 
 const GMAIL_CLIP_BYTES = 102 * 1024;
 
@@ -36,7 +39,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
   const { v } = await searchParams;
   const project = await db.project.findUnique({
     where: { id, ...(user.role === "admin" ? {} : { workspace: { ownerId: user.id } }) },
-    include: { versions: { orderBy: { number: "desc" }, include: { assets: { orderBy: { path: "asc" } } } } },
+    include: { versions: { orderBy: { number: "desc" }, include: { assets: { orderBy: { path: "asc" } } } }, client: true },
   });
   if (!project || project.versions.length === 0) notFound();
 
@@ -55,7 +58,14 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
     }),
     db.checkRun.findFirst({ where: { versionId: version.id }, orderBy: { createdAt: "desc" } }),
   ]);
-  const shares = await db.shareLink.findMany({ where: { projectId: project.id, revokedAt: null }, orderBy: { createdAt: "desc" } });
+  const [shares, clients, rawThreads, approval] = await Promise.all([
+    db.shareLink.findMany({ where: { projectId: project.id, revokedAt: null }, orderBy: { createdAt: "desc" } }),
+    db.client.findMany({ where: { workspaceId: workspace.id }, orderBy: { name: "asc" } }),
+    listComments(version.id),
+    latestApproval(version.id),
+  ]);
+  const threads = toThreads(rawThreads);
+  const openComments = threads.filter((t) => !t.resolvedAt).length;
   const checkRun = lastRun ? checkResultSchema.safeParse(lastRun.result) : null;
   const live: CheckResult | null = checkRun?.success ? checkRun.data : null;
 
@@ -95,6 +105,20 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
 
   const panel = (
     <>
+      <Section title={`Comments · ${openComments} open`}>
+        {approval && (
+          <p className="mb-2 rounded-lg border px-2.5 py-1.5">
+            <span className="font-medium">{approval.reviewerName}</span> {approval.decision === "APPROVED" ? "approved" : "requested changes on"} v{version.number}
+            <time className="ml-1 text-xs text-muted-foreground">{approval.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</time>
+            {approval.note && <span className="block text-muted-foreground mt-1 whitespace-pre-wrap">{approval.note}</span>}
+          </p>
+        )}
+        <AgencyComments projectId={project.id} threads={threads} />
+        <div className="mt-3 border-t pt-3">
+          <NotifyClientForm projectId={project.id} contactEmail={project.client?.contactEmail ?? null} />
+        </div>
+      </Section>
+
       <Section
         title="Checks"
         action={
@@ -241,6 +265,40 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
           <Badge variant="secondary" className="font-mono hidden sm:inline-flex">
             {version.sourceKind}
           </Badge>
+          <form action={setStatusAction} className="hidden sm:block">
+            <input type="hidden" name="projectId" value={project.id} />
+            <select
+              name="status"
+              defaultValue={project.status}
+              aria-label="Project status"
+              className="h-7 rounded-md border bg-transparent px-1.5 text-xs outline-none"
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="IN_REVIEW">In review</option>
+              <option value="CHANGES_REQUESTED">Changes requested</option>
+              <option value="APPROVED">Approved</option>
+            </select>
+            <Button type="submit" size="xs" variant="ghost">
+              Set
+            </Button>
+          </form>
+          <span className="sm:hidden">
+            <StatusBadge status={project.status} />
+          </span>
+          <form action={setClientAction} className="hidden md:flex items-center gap-1">
+            <input type="hidden" name="projectId" value={project.id} />
+            <select name="clientId" defaultValue={project.clientId ?? ""} aria-label="Client" className="h-7 max-w-40 rounded-md border bg-transparent px-1.5 text-xs outline-none">
+              <option value="">No client</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" size="xs" variant="ghost">
+              Assign
+            </Button>
+          </form>
           <div className="ml-auto flex items-center gap-2">
             <CountBadges counts={counts} />
             <ShareDialog
@@ -263,7 +321,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
             </nav>
           </div>
         </div>
-        <Preview src={`/api/versions/${version.id}/html`} />
+        <AgencyPreview src={`/api/versions/${version.id}/html`} threads={threads} />
       </div>
 
       <WorkbenchPanel summary={<CountBadges counts={counts} compact />}>{panel}</WorkbenchPanel>

@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { Preview } from "@/components/preview";
-import { Badge } from "@/components/ui/badge";
+import { ReviewWorkbench } from "@/components/review-workbench";
+import { toThreads } from "@/lib/threads";
 import { db } from "@/lib/db";
+import { latestApproval, listComments } from "@/lib/review";
 import { resolveShare } from "@/lib/share";
 
-export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Review", robots: { index: false, follow: false } };
 
 type Params = PageProps<"/s/[token]">["params"];
 
@@ -25,20 +26,21 @@ async function Shared({ params }: { params: Params }) {
   const resolved = await resolveShare(token);
   if (!resolved) notFound();
   const { share, project, version } = resolved;
-  await db.shareLink.update({ where: { id: share.id }, data: { views: { increment: 1 } } });
+  const [threads, approval] = await Promise.all([
+    listComments(version.id),
+    latestApproval(version.id),
+    db.shareLink.update({ where: { id: share.id }, data: { views: { increment: 1 } } }),
+  ]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="min-h-11 shrink-0 border-b bg-background flex items-center gap-2 px-3 sm:px-4 py-1.5">
-        <h1 className="font-medium truncate min-w-0">{project.name}</h1>
-        <Badge variant="secondary" className="font-mono">
-          v{version.number}
-        </Badge>
-        <span className="ml-auto text-muted-foreground text-xs hidden sm:inline">
-          {version.createdAt.toLocaleDateString("en-US")} · read-only preview
-        </span>
-      </div>
-      <Preview src={`/api/share/${token}/html`} />
-    </div>
+    <ReviewWorkbench
+      token={token}
+      src={`/api/share/${token}/html`}
+      projectName={project.name}
+      versionNumber={version.number}
+      status={project.status}
+      initialThreads={toThreads(threads)}
+      lastDecision={approval ? { decision: approval.decision, reviewerName: approval.reviewerName, createdAt: approval.createdAt.toISOString(), note: approval.note } : null}
+    />
   );
 }

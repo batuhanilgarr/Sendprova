@@ -107,3 +107,31 @@ export async function deleteGroup(form: FormData) {
   await db.recipientGroup.delete({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
   revalidatePath("/app/settings");
 }
+
+const clientSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Client name is required"),
+  contactName: z.string().trim().optional().default(""),
+  contactEmail: z.string().trim().email("Enter a valid email").optional().or(z.literal("")),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex color like #4F46E5").optional().or(z.literal("")),
+});
+
+export async function saveClient(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const parsed = clientSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, name, contactName, contactEmail, color } = parsed.data;
+  const workspace = await currentWorkspace();
+  const data = { name, contactName: contactName || null, contactEmail: contactEmail || null, color: color || null };
+  if (id) await db.client.update({ where: { id, workspaceId: workspace.id }, data });
+  else await db.client.create({ data: { ...data, workspaceId: workspace.id } });
+  revalidatePath("/app/settings");
+  revalidatePath("/app");
+  return { ok: "Client saved." };
+}
+
+export async function deleteClient(form: FormData) {
+  const workspace = await currentWorkspace();
+  await db.client.delete({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
+  revalidatePath("/app/settings");
+  revalidatePath("/app");
+}

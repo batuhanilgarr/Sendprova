@@ -21,6 +21,29 @@ model Workspace {
   senders   SenderProfile[]
   groups    RecipientGroup[]
   ledger    CreditLedger[]
+  clients   Client[]
+}
+
+/// An agency's customer. Projects, brand kit and reviewers hang off it.
+model Client {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name         String
+  contactName  String?
+  contactEmail String?
+  color        String?
+  createdAt    DateTime  @default(now())
+  projects     Project[]
+
+  @@index([workspaceId])
+}
+
+enum ProjectStatus {
+  DRAFT
+  IN_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
 }
 
 /// 1 credit = 1 recipient in one test send. Positive = top-up, negative = usage.
@@ -112,12 +135,16 @@ model Project {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status      ProjectStatus @default(DRAFT)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   versions    Version[]
   shareLinks  ShareLink[]
 
   @@index([workspaceId, updatedAt])
+  @@index([clientId])
 }
 
 /// Public, read-only preview link. Always shows the project's latest version.
@@ -156,8 +183,51 @@ model Version {
   assets     Asset[]
   testSends  TestSend[]
   checkRuns  CheckRun[]
+  comments   Comment[]
+  approvals  Approval[]
 
   @@unique([projectId, number])
+}
+
+/// A comment pinned to a point on the preview of one version.
+model Comment {
+  id          String    @id @default(cuid())
+  versionId   String
+  version     Version   @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Comment?  @relation("Thread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("Thread")
+  /// Fraction of the preview width/height (0..1) at pin time; null for replies.
+  x           Float?
+  y           Float?
+  device      String?
+  body        String
+  authorName  String
+  authorEmail String?
+  /// Set when the author is a signed-in workspace member (agency side).
+  byUserId    String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([versionId, createdAt])
+}
+
+enum Decision {
+  APPROVED
+  CHANGES_REQUESTED
+}
+
+model Approval {
+  id            String   @id @default(cuid())
+  versionId     String
+  version       Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  decision      Decision
+  note          String?
+  reviewerName  String
+  reviewerEmail String?
+  createdAt     DateTime @default(now())
+
+  @@index([versionId, createdAt])
 }
 
 /// Result of an on-demand check pass (links, images, alt text) for a version.

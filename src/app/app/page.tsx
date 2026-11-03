@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DropZone } from "@/components/drop-zone";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/review-workbench";
 import { db } from "@/lib/db";
 import { currentWorkspace } from "@/lib/session";
 
@@ -33,9 +34,38 @@ async function ProjectList() {
     take: 50,
     include: {
       versions: { orderBy: { number: "desc" }, take: 1, select: { number: true, htmlBytes: true, createdAt: true, sourceKind: true } },
+      client: { select: { id: true, name: true, color: true } },
     },
   });
   if (projects.length === 0) return <p className="text-muted-foreground">No projects yet.</p>;
+
+  // Group by client; projects without a client come last.
+  const groups = new Map<string, { name: string; color: string | null; items: typeof projects }>();
+  for (const p of projects) {
+    const key = p.client?.id ?? "_none";
+    if (!groups.has(key)) groups.set(key, { name: p.client?.name ?? "No client", color: p.client?.color ?? null, items: [] });
+    groups.get(key)!.items.push(p);
+  }
+  const ordered = [...groups.entries()].sort(([a], [b]) => (a === "_none" ? 1 : b === "_none" ? -1 : 0));
+
+  return (
+    <div className="flex flex-col gap-6">
+      {ordered.map(([key, g]) => (
+        <div key={key}>
+          {groups.size > 1 && (
+            <h3 className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <span className="size-2 rounded-full border" style={{ background: g.color ?? "transparent" }} aria-hidden />
+              {g.name}
+            </h3>
+          )}
+          <ProjectRows projects={g.items} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProjectRows({ projects }: { projects: { id: string; name: string; status: string; versions: { number: number; htmlBytes: number; createdAt: Date; sourceKind: string }[] }[] }) {
   return (
     <ul className="divide-y rounded-xl border bg-card overflow-hidden">
       {projects.map((p) => {
@@ -44,6 +74,7 @@ async function ProjectList() {
           <li key={p.id}>
             <Link href={`/app/p/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/60 transition-colors">
               <span className="flex-1 min-w-0 truncate font-medium">{p.name}</span>
+              <StatusBadge status={p.status} />
               {v && (
                 <>
                   <Badge variant="secondary" className="hidden sm:inline-flex font-mono">

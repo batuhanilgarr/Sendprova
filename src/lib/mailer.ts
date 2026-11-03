@@ -79,6 +79,17 @@ export async function verifySender(senderId: string) {
   await transportFor(sender.transport, sender.config).verify();
 }
 
+/** Plain-text transactional email (notifications, review invitations). Not metered. */
+export async function sendPlain(senderId: string, to: string, subject: string, text: string) {
+  const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: senderId } });
+  const transport = transportFor(sender.transport, sender.config);
+  try {
+    await transport.sendMail({ from: { name: sender.fromName, address: sender.fromEmail }, to, subject, text });
+  } finally {
+    transport.close();
+  }
+}
+
 /**
  * Create a TestSend with one Delivery per recipient and send them sequentially.
  * Sequential keeps SMTP connections simple; a queue replaces this later.

@@ -1,4 +1,5 @@
 import { CoinsIcon, LogOutIcon, SettingsIcon, ShieldIcon } from "lucide-react";
+import { Logo } from "@/components/logo";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -12,11 +13,8 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (
     <>
       <header className="h-12 shrink-0 border-b bg-background/80 backdrop-blur flex items-center px-3 sm:px-4 gap-3 sticky top-0 z-30">
-        <Link href="/app" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="inline-grid size-6 place-items-center rounded-md bg-primary text-primary-foreground text-[11px] font-bold" aria-hidden>
-            S
-          </span>
-          Sendprova
+        <Link href="/app" className="flex items-center">
+          <Logo markClassName="size-6" />
         </Link>
         <nav className="ml-auto flex items-center gap-1">
           <Suspense fallback={null}>

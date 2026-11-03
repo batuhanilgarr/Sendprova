@@ -12,6 +12,7 @@ import {
   ShieldCheckIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -51,11 +52,8 @@ export default function Landing() {
   return (
     <>
       <header className="h-14 flex items-center px-4 sm:px-6 gap-3 max-w-6xl mx-auto w-full">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-[15px]">
-          <span className="inline-grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold" aria-hidden>
-            S
-          </span>
-          Sendprova
+        <Link href="/" className="flex items-center text-[15px]">
+          <Logo markClassName="size-7" />
         </Link>
         <nav className="hidden sm:flex items-center gap-1 ml-6 text-muted-foreground">
           <a href="#how" className="px-2 py-1 rounded-md hover:text-foreground">
