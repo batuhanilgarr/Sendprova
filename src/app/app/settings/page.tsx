@@ -165,6 +165,7 @@ async function Clients() {
               <span className="font-medium">{c.name}</span>
               <Badge variant="secondary">{c._count.projects} projects</Badge>
               {c.contactEmail && <span className="text-muted-foreground font-mono text-xs truncate">{c.contactEmail}</span>}
+              {(c.colors.length || c.footerText || c.utmTemplate || c.allowedDomains.length) ? <Badge variant="outline">brand kit</Badge> : null}
               <form action={deleteClient} className="ml-auto">
                 <input type="hidden" name="id" value={c.id} />
                 <Button type="submit" variant="destructive" size="sm">
@@ -175,7 +176,22 @@ async function Clients() {
             <details>
               <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
               <div className="px-4 pb-4">
-                <ClientForm initial={{ id: c.id, name: c.name, contactName: c.contactName ?? "", contactEmail: c.contactEmail ?? "", color: c.color ?? "" }} />
+                <ClientForm
+                  initial={{
+                    id: c.id,
+                    name: c.name,
+                    contactName: c.contactName ?? "",
+                    contactEmail: c.contactEmail ?? "",
+                    color: c.color ?? "",
+                    colors: c.colors.join(", "),
+                    fonts: c.fonts.join(", "),
+                    footerText: c.footerText ?? "",
+                    physicalAddress: c.physicalAddress ?? "",
+                    unsubscribeToken: c.unsubscribeToken ?? "",
+                    utmTemplate: c.utmTemplate ?? "",
+                    allowedDomains: c.allowedDomains.join(", "),
+                  }}
+                />
               </div>
             </details>
           </li>

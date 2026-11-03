@@ -33,6 +33,15 @@ model Client {
   contactName  String?
   contactEmail String?
   color        String?
+  // ---- brand kit ----
+  logoUrl              String?
+  colors               String[] // allowed hex colors
+  fonts                String[] // allowed font family names
+  footerText           String?  // required legal / footer sentence
+  physicalAddress      String?  // required postal address (CAN-SPAM, KVKK)
+  unsubscribeToken     String?  // placeholder or URL fragment that must be present
+  utmTemplate          String?  // e.g. utm_source=newsletter&utm_medium=email
+  allowedDomains       String[] // links must point at these hosts
   createdAt    DateTime  @default(now())
   projects     Project[]
 

@@ -9,6 +9,8 @@ import { latestApproval, listComments } from "@/lib/review";
 import { resolveShare } from "@/lib/share";
 import { loadDiffViews, revisionRounds, deadlineState } from "@/lib/review-rounds";
 import { textDiff } from "@/lib/diff";
+import { checkResultSchema, type CheckResult } from "@/lib/checks";
+import { kitFromClient, sendReadyScore } from "@/lib/score";
 
 export const metadata: Metadata = { title: "Review", robots: { index: false, follow: false } };
 
@@ -36,6 +38,14 @@ async function Shared({ params }: { params: Params }) {
     db.shareLink.update({ where: { id: share.id }, data: { views: { increment: 1 } } }),
   ]);
   const deadline = deadlineState(project.reviewDeadline, project.status);
+  const [client, lastRun, assetCount] = await Promise.all([
+    project.clientId ? db.client.findUnique({ where: { id: project.clientId } }) : null,
+    db.checkRun.findFirst({ where: { versionId: version.id }, orderBy: { createdAt: "desc" } }),
+    db.asset.count({ where: { versionId: version.id } }),
+  ]);
+  const parsedRun = lastRun ? checkResultSchema.safeParse(lastRun.result) : null;
+  const live: CheckResult | null = parsedRun?.success ? parsedRun.data : null;
+  const score = sendReadyScore({ html: version.html, htmlBytes: version.htmlBytes, assetCount, missingAssets: version.missingAssets, placeholders: version.placeholders, live, kit: kitFromClient(client) });
 
   return (
     <ReviewWorkbench
@@ -49,6 +59,7 @@ async function Shared({ params }: { params: Params }) {
       diff={diffData ? { baseNumber: diffData.baseNumber, number: diffData.number, views: diffData.views, text: textDiff(diffData.baseHtml, diffData.html) } : null}
       rounds={{ used: rounds, limit: project.revisionLimit }}
       deadline={deadline}
+      score={{ score: score.score, counts: score.counts, findings: score.findings, hasKit: !!kitFromClient(client) }}
     />
   );
 }

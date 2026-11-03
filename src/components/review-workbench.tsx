@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VersionDiff, type DiffView } from "@/components/version-diff";
 import type { TextDiffLine } from "@/lib/diff";
+import type { Finding } from "@/lib/brand-checks";
+import { FindingsList, ScoreCard } from "@/components/score-card";
 
 interface Reviewer {
   name: string;
@@ -35,6 +37,7 @@ export function ReviewWorkbench({
   diff = null,
   rounds,
   deadline = null,
+  score = null,
 }: {
   token: string;
   src: string;
@@ -46,6 +49,7 @@ export function ReviewWorkbench({
   diff?: { baseNumber: number; number: number; views: DiffView[]; text: { lines: TextDiffLine[]; added: number; removed: number } } | null;
   rounds?: { used: number; limit: number };
   deadline?: { label: string; tone: "ok" | "warn" | "err" } | null;
+  score?: { score: number; counts: Record<"ok" | "warn" | "err", number>; findings: Finding[]; hasKit: boolean } | null;
 }) {
   const [threads, setThreads] = useState<Thread[]>(initialThreads);
   const [reviewer, setReviewer] = useState<Reviewer | null>(null);
@@ -205,6 +209,19 @@ export function ReviewWorkbench({
               <time className="ml-auto text-xs text-muted-foreground">{new Date(decision.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</time>
             </div>
             {decision.note && <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{decision.note}</p>}
+          </section>
+        )}
+
+        {score && (
+          <section className="border-b px-4 py-3">
+            <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-2">Pre-flight</h2>
+            <ScoreCard score={score.score} counts={score.counts} hasKit={score.hasKit} compact />
+            <details>
+              <summary className="cursor-pointer select-none text-muted-foreground">Show all checks</summary>
+              <div className="mt-2">
+                <FindingsList findings={score.findings} />
+              </div>
+            </details>
           </section>
         )}
 

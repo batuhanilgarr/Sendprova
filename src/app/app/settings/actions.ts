@@ -114,14 +114,37 @@ const clientSchema = z.object({
   contactName: z.string().trim().optional().default(""),
   contactEmail: z.string().trim().email("Enter a valid email").optional().or(z.literal("")),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex color like #4F46E5").optional().or(z.literal("")),
+  colors: z.string().optional().default(""),
+  fonts: z.string().optional().default(""),
+  footerText: z.string().trim().optional().default(""),
+  physicalAddress: z.string().trim().optional().default(""),
+  unsubscribeToken: z.string().trim().optional().default(""),
+  utmTemplate: z.string().trim().optional().default(""),
+  allowedDomains: z.string().optional().default(""),
 });
+
+const list = (raw: string) => [...new Set(raw.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean))];
 
 export async function saveClient(_prev: ActionState, form: FormData): Promise<ActionState> {
   const parsed = clientSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { id, name, contactName, contactEmail, color } = parsed.data;
+  const { id, name, contactName, contactEmail, color, colors, fonts, footerText, physicalAddress, unsubscribeToken, utmTemplate, allowedDomains } = parsed.data;
+  const badColor = list(colors).find((c) => !/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(c));
+  if (badColor) return { error: `"${badColor}" is not a hex color` };
   const workspace = await currentWorkspace();
-  const data = { name, contactName: contactName || null, contactEmail: contactEmail || null, color: color || null };
+  const data = {
+    name,
+    contactName: contactName || null,
+    contactEmail: contactEmail || null,
+    color: color || null,
+    colors: list(colors),
+    fonts: fonts.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean),
+    footerText: footerText || null,
+    physicalAddress: physicalAddress || null,
+    unsubscribeToken: unsubscribeToken || null,
+    utmTemplate: utmTemplate.replace(/^\?/, "") || null,
+    allowedDomains: list(allowedDomains).map((d) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")),
+  };
   if (id) await db.client.update({ where: { id, workspaceId: workspace.id }, data });
   else await db.client.create({ data: { ...data, workspaceId: workspace.id } });
   revalidatePath("/app/settings");

@@ -10,6 +10,7 @@ pnpm install
 cp .env.example .env            # set BETTER_AUTH_SECRET and ADMIN_EMAIL
 docker compose up -d            # Postgres :5433, Redis :6379, Mailpit :8025 (UI) / :1025 (SMTP)
 pnpm prisma migrate deploy
+pnpm exec playwright install chromium   # snapshots, version diff, PDF reports
 pnpm dev
 ```
 
@@ -30,6 +31,9 @@ Images are written to `.data/assets` (or S3/R2 with `STORAGE_DRIVER=s3`) and eve
 | `src/lib/html/rewrite.ts` | Relative `src` / `background` / `url()` → hosted URL; placeholder detection |
 | `src/lib/mailer.ts` | Nodemailer SMTP transport, credit reservation, per-recipient delivery |
 | `src/lib/checks.ts` | Link / image reachability and alt-text checks |
+| `src/lib/brand-checks.ts`, `src/lib/score.ts` | Brand kit, legal and UTM checks; 0–100 send-ready score |
+| `src/lib/snapshots.ts`, `src/lib/diff.ts` | Playwright snapshots, pixel diff and text diff between versions |
+| `src/lib/review.ts` | Pinned comments and approval decisions behind share tokens |
 | `prisma/schema.prisma` | Workspace, Project, Version, Asset, SenderProfile, RecipientGroup, TestSend, CheckRun, ShareLink, CreditLedger, auth tables |
 
 ## Image hosting (Cloudflare R2)

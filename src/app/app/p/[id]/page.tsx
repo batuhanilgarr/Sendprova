@@ -1,4 +1,6 @@
-import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
+import { ArrowLeftIcon, FileTextIcon, RefreshCwIcon } from "lucide-react";
+import { FindingsList, ScoreCard } from "@/components/score-card";
+import { kitFromClient, sendReadyScore } from "@/lib/score";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -24,10 +26,7 @@ import { VersionDiff } from "@/components/version-diff";
 import { CompareButton } from "@/components/compare-panel";
 import { saveReviewSettingsAction } from "./actions";
 
-const GMAIL_CLIP_BYTES = 102 * 1024;
-
 type Tone = "ok" | "warn" | "err";
-type Check = { tone: Tone; text: string };
 
 export default function ProjectPage({ params, searchParams }: PageProps<"/app/p/[id]">) {
   return (
@@ -78,39 +77,16 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
   const checkRun = lastRun ? checkResultSchema.safeParse(lastRun.result) : null;
   const live: CheckResult | null = checkRun?.success ? checkRun.data : null;
 
-  const kb = version.htmlBytes / 1024;
-  const checks: Check[] = [
-    version.htmlBytes > GMAIL_CLIP_BYTES
-      ? { tone: "warn", text: `HTML is ${kb.toFixed(1)} KB. Gmail clips messages over 102 KB.` }
-      : { tone: "ok", text: `HTML is ${kb.toFixed(1)} KB, under the Gmail limit.` },
-    version.missingAssets.length
-      ? { tone: "err", text: `${version.missingAssets.length} image reference${version.missingAssets.length === 1 ? "" : "s"} could not be matched.` }
-      : { tone: "ok", text: `${version.assets.length} image${version.assets.length === 1 ? "" : "s"} hosted, all references matched.` },
-    version.placeholders.length
-      ? { tone: "warn", text: `${version.placeholders.length} placeholder${version.placeholders.length === 1 ? "" : "s"} found; sent as-is in test sends.` }
-      : { tone: "ok", text: "No placeholders." },
-    /charset=.*utf-8|<meta[^>]+charset=["']?utf-8/i.test(version.html)
-      ? { tone: "ok", text: "UTF-8 charset declared." }
-      : { tone: "warn", text: "No UTF-8 charset declared; accented and non-Latin characters may break." },
-  ];
-  if (live) {
-    const badLinks = live.links.filter((l) => !l.ok);
-    const badImages = live.images.filter((i) => !i.ok);
-    checks.push(
-      badLinks.length
-        ? { tone: "err", text: `${badLinks.length} of ${live.links.length} links are not responding.` }
-        : { tone: "ok", text: `${live.links.length} link${live.links.length === 1 ? "" : "s"} checked, all working.` },
-      badImages.length
-        ? { tone: "err", text: `${badImages.length} of ${live.images.length} images fail to load.` }
-        : { tone: "ok", text: `${live.images.length} image${live.images.length === 1 ? "" : "s"} reachable, ${(live.totalImageBytes / 1024).toFixed(0)} KB total.` },
-      live.altMissing.length
-        ? { tone: "warn", text: `${live.altMissing.length} image${live.altMissing.length === 1 ? "" : "s"} missing alt text.` }
-        : { tone: "ok", text: "All images have alt text." },
-    );
-    if (live.totalImageBytes > 1024 * 1024) checks.push({ tone: "warn", text: "Images exceed 1 MB; the email will load slowly on mobile." });
-  }
-  const counts = { ok: 0, warn: 0, err: 0 };
-  for (const c of checks) counts[c.tone]++;
+  const result = sendReadyScore({
+    html: version.html,
+    htmlBytes: version.htmlBytes,
+    assetCount: version.assets.length,
+    missingAssets: version.missingAssets,
+    placeholders: version.placeholders,
+    live,
+    kit: kitFromClient(project.client),
+  });
+  const { score, findings, counts } = result;
 
   const panel = (
     <>
@@ -160,48 +136,34 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
       </Section>
 
       <Section
-        title="Checks"
+        title="Send-ready"
         action={
-          <form action={runChecksAction}>
-            <input type="hidden" name="versionId" value={version.id} />
-            <input type="hidden" name="projectId" value={project.id} />
-            <Button type="submit" variant="outline" size="xs">
-              <RefreshCwIcon data-icon="inline-start" />
-              {live ? "Re-run" : "Check links"}
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="xs" nativeButton={false} render={<a href={`/api/versions/${version.id}/preflight.pdf`} target="_blank" rel="noreferrer" />}>
+              <FileTextIcon data-icon="inline-start" />
+              PDF
             </Button>
-          </form>
+            <form action={runChecksAction}>
+              <input type="hidden" name="versionId" value={version.id} />
+              <input type="hidden" name="projectId" value={project.id} />
+              <Button type="submit" variant="outline" size="xs">
+                <RefreshCwIcon data-icon="inline-start" />
+                {live ? "Re-run" : "Check links"}
+              </Button>
+            </form>
+          </div>
         }
       >
-        <ul className="flex flex-col gap-2">
-          {checks.map((c, i) => (
-            <li key={i} className="flex gap-2">
-              <Dot tone={c.tone} />
-              <span>{c.text}</span>
-            </li>
-          ))}
-        </ul>
-        {live && (live.links.some((l) => !l.ok) || live.images.some((i) => !i.ok) || live.altMissing.length > 0) && (
-          <ul className="mt-3 flex flex-col gap-1 font-mono text-[11px]">
-            {live.links
-              .filter((l) => !l.ok)
-              .map((l) => (
-                <li key={l.url} className="text-err truncate" title={l.error ?? String(l.status)}>
-                  {l.status ?? "✕"} {l.url}
-                </li>
-              ))}
-            {live.images
-              .filter((i) => !i.ok)
-              .map((i) => (
-                <li key={i.url} className="text-err truncate">
-                  {i.status ?? "✕"} {i.url}
-                </li>
-              ))}
-            {live.altMissing.map((src, i) => (
-              <li key={i} className="text-warn truncate">
-                missing alt: {src.split("/").pop()}
-              </li>
-            ))}
-          </ul>
+        <ScoreCard score={score} counts={counts} hasKit={!!project.client && !!kitFromClient(project.client)} />
+        <FindingsList findings={findings} />
+        {!kitFromClient(project.client) && (
+          <p className="mt-2 text-muted-foreground">
+            Add a brand kit to the client in{" "}
+            <Link href="/app/settings" className="underline underline-offset-2">
+              Settings
+            </Link>{" "}
+            to check colors, fonts, legal footer and UTM tracking.
+          </p>
         )}
       </Section>
 

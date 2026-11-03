@@ -103,7 +103,22 @@ export function GroupForm({ initial }: { initial?: { id: string; name: string; e
   );
 }
 
-export function ClientForm({ initial }: { initial?: { id: string; name: string; contactName: string; contactEmail: string; color: string } }) {
+export interface ClientFormValues {
+  id: string;
+  name: string;
+  contactName: string;
+  contactEmail: string;
+  color: string;
+  colors: string;
+  fonts: string;
+  footerText: string;
+  physicalAddress: string;
+  unsubscribeToken: string;
+  utmTemplate: string;
+  allowedDomains: string;
+}
+
+export function ClientForm({ initial }: { initial?: ClientFormValues }) {
   const [state, action, pending] = useActionState(saveClient, null);
   return (
     <form action={action} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -120,6 +135,33 @@ export function ClientForm({ initial }: { initial?: { id: string; name: string; 
       <Field label="Brand color" hint="(hex, optional)">
         <Input name="color" defaultValue={initial?.color} placeholder="#4F46E5" className="font-mono" />
       </Field>
+
+      <div className="sm:col-span-2 mt-2 border-t pt-3">
+        <h4 className="font-medium">Brand kit</h4>
+        <p className="text-muted-foreground">Every field is optional. Filled fields become checks on every version of this client&apos;s projects.</p>
+      </div>
+      <Field label="Palette" hint="(hex colors, comma separated)">
+        <Input name="colors" defaultValue={initial?.colors} placeholder="#0033A0, #E6007E, #333333" className="font-mono" />
+      </Field>
+      <Field label="Fonts" hint="(family names, comma separated)">
+        <Input name="fonts" defaultValue={initial?.fonts} placeholder="Montserrat, Arial" />
+      </Field>
+      <Field label="Required footer text" className="sm:col-span-2">
+        <Textarea name="footerText" defaultValue={initial?.footerText} rows={2} placeholder="If you no longer wish to receive campaign emails, please click here." />
+      </Field>
+      <Field label="Physical address" className="sm:col-span-2">
+        <Input name="physicalAddress" defaultValue={initial?.physicalAddress} placeholder="Acme Inc., 1 Example Street, Istanbul" />
+      </Field>
+      <Field label="Unsubscribe token" hint="(placeholder or URL fragment)">
+        <Input name="unsubscribeToken" defaultValue={initial?.unsubscribeToken} placeholder="{unsubscribelink}" className="font-mono" />
+      </Field>
+      <Field label="UTM template" hint="(required query parameters)">
+        <Input name="utmTemplate" defaultValue={initial?.utmTemplate} placeholder="utm_source=newsletter&utm_medium=email" className="font-mono" />
+      </Field>
+      <Field label="Allowed link domains" hint="(comma separated; UTM is checked on these)" className="sm:col-span-2">
+        <Input name="allowedDomains" defaultValue={initial?.allowedDomains} placeholder="acme.com, shop.acme.com" className="font-mono" />
+      </Field>
+
       <div className="sm:col-span-2 flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
         <Status state={state} />
