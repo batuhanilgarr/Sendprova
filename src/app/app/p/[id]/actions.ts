@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { runChecks } from "@/lib/checks";
+import { ensureVisualDiff } from "@/lib/diff";
 import { db } from "@/lib/db";
 import { parseEmails, sendTest } from "@/lib/mailer";
 import { newToken } from "@/lib/share";
@@ -160,4 +161,43 @@ export async function notifyClientAction(_prev: NotifyState, form: FormData): Pr
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+export type CompareState = { ok?: string; error?: string } | null;
+
+/** Render snapshots for this version and its predecessor and compute the pixel diffs. */
+export async function compareAction(_prev: CompareState, form: FormData): Promise<CompareState> {
+  const projectId = String(form.get("projectId"));
+  const versionId = String(form.get("versionId"));
+  try {
+    await requireProjectAccess(projectId);
+    const version = await db.version.findUniqueOrThrow({ where: { id: versionId } });
+    if (version.projectId !== projectId) throw new Error("Version not found");
+    const base = await db.version.findFirst({ where: { projectId, number: { lt: version.number } }, orderBy: { number: "desc" } });
+    if (!base) return { error: "This is the first version; nothing to compare against." };
+    await Promise.all([ensureVisualDiff(versionId, base.id, "desktop"), ensureVisualDiff(versionId, base.id, "mobile")]);
+    revalidatePath(`/app/p/${projectId}`);
+    return { ok: `Compared with v${base.number}.` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+const reviewSettingsSchema = z.object({
+  projectId: z.string().min(1),
+  revisionLimit: z.coerce.number().int().min(0).max(20),
+  reviewDeadline: z.string().optional().default(""),
+});
+
+export async function saveReviewSettingsAction(form: FormData) {
+  const parsed = reviewSettingsSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return;
+  const { projectId, revisionLimit, reviewDeadline } = parsed.data;
+  await requireProjectAccess(projectId);
+  await db.project.update({
+    where: { id: projectId },
+    data: { revisionLimit, reviewDeadline: reviewDeadline ? new Date(reviewDeadline) : null },
+  });
+  revalidatePath(`/app/p/${projectId}`);
+  revalidatePath("/app");
 }

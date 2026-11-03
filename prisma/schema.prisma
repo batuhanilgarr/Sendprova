@@ -138,6 +138,9 @@ model Project {
   clientId    String?
   client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
   status      ProjectStatus @default(DRAFT)
+  /// Agreed number of revision rounds; a round is one "changes requested" decision.
+  revisionLimit  Int       @default(2)
+  reviewDeadline DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   versions    Version[]
@@ -185,8 +188,42 @@ model Version {
   checkRuns  CheckRun[]
   comments   Comment[]
   approvals  Approval[]
+  snapshots  Snapshot[]
+  diffs      VersionDiff[] @relation("DiffTarget")
+  diffBases  VersionDiff[] @relation("DiffBase")
 
   @@unique([projectId, number])
+}
+
+/// Full-page screenshot of a version at one device width, stored as an asset.
+model Snapshot {
+  id        String   @id @default(cuid())
+  versionId String
+  version   Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  device    String
+  url       String
+  width     Int
+  height    Int
+  createdAt DateTime @default(now())
+
+  @@unique([versionId, device])
+}
+
+/// Pixel diff between two versions' snapshots plus a text diff summary.
+model VersionDiff {
+  id            String   @id @default(cuid())
+  versionId     String
+  version       Version  @relation("DiffTarget", fields: [versionId], references: [id], onDelete: Cascade)
+  baseVersionId String
+  baseVersion   Version  @relation("DiffBase", fields: [baseVersionId], references: [id], onDelete: Cascade)
+  device        String
+  diffUrl       String
+  changedRatio  Float
+  width         Int
+  height        Int
+  createdAt     DateTime @default(now())
+
+  @@unique([versionId, baseVersionId, device])
 }
 
 /// A comment pinned to a point on the preview of one version.

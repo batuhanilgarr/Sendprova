@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VersionDiff, type DiffView } from "@/components/version-diff";
+import type { TextDiffLine } from "@/lib/diff";
 
 interface Reviewer {
   name: string;
@@ -30,6 +32,9 @@ export function ReviewWorkbench({
   status,
   initialThreads,
   lastDecision,
+  diff = null,
+  rounds,
+  deadline = null,
 }: {
   token: string;
   src: string;
@@ -38,6 +43,9 @@ export function ReviewWorkbench({
   status: string;
   initialThreads: Thread[];
   lastDecision: { decision: string; reviewerName: string; createdAt: string; note: string | null } | null;
+  diff?: { baseNumber: number; number: number; views: DiffView[]; text: { lines: TextDiffLine[]; added: number; removed: number } } | null;
+  rounds?: { used: number; limit: number };
+  deadline?: { label: string; tone: "ok" | "warn" | "err" } | null;
 }) {
   const [threads, setThreads] = useState<Thread[]>(initialThreads);
   const [reviewer, setReviewer] = useState<Reviewer | null>(null);
@@ -140,6 +148,12 @@ export function ReviewWorkbench({
             v{versionNumber}
           </Badge>
           <StatusBadge status={projectStatus} />
+          {rounds && rounds.limit > 0 && (
+            <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground" title="Revision rounds used of the agreed number">
+              Round {Math.min(rounds.used + 1, rounds.limit)}/{rounds.limit}
+            </span>
+          )}
+          {deadline && <span className={`hidden sm:inline text-[11px] text-${deadline.tone}`}>{deadline.label}</span>}
           <div className="ml-auto flex items-center gap-1">
             <Button size="sm" variant="outline" onClick={() => ensureReviewer(() => setDecisionOpen("CHANGES_REQUESTED"))}>
               <XCircleIcon data-icon="inline-start" />
@@ -191,6 +205,13 @@ export function ReviewWorkbench({
               <time className="ml-auto text-xs text-muted-foreground">{new Date(decision.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</time>
             </div>
             {decision.note && <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{decision.note}</p>}
+          </section>
+        )}
+
+        {diff && (
+          <section className="border-b px-4 py-3">
+            <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-2">What changed since v{diff.baseNumber}</h2>
+            <VersionDiff baseNumber={diff.baseNumber} number={diff.number} views={diff.views} text={diff.text} />
           </section>
         )}
 

@@ -18,6 +18,11 @@ import { requireUser } from "@/lib/session";
 import { ensureDefaultSender } from "@/lib/mailer";
 import { runChecksAction, setClientAction, setStatusAction } from "./actions";
 import { latestApproval, listComments } from "@/lib/review";
+import { deadlineState, loadDiffViews, revisionRounds } from "@/lib/review-rounds";
+import { textDiff } from "@/lib/diff";
+import { VersionDiff } from "@/components/version-diff";
+import { CompareButton } from "@/components/compare-panel";
+import { saveReviewSettingsAction } from "./actions";
 
 const GMAIL_CLIP_BYTES = 102 * 1024;
 
@@ -65,6 +70,10 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
     latestApproval(version.id),
   ]);
   const threads = toThreads(rawThreads);
+  const [diffData, rounds] = await Promise.all([loadDiffViews(version.id), revisionRounds(project.id)]);
+  const diffText = diffData ? textDiff(diffData.baseHtml, diffData.html) : null;
+  const deadline = deadlineState(project.reviewDeadline, project.status);
+  const previous = project.versions.find((x) => x.number < version.number);
   const openComments = threads.filter((t) => !t.resolvedAt).length;
   const checkRun = lastRun ? checkResultSchema.safeParse(lastRun.result) : null;
   const live: CheckResult | null = checkRun?.success ? checkRun.data : null;
@@ -117,6 +126,37 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
         <div className="mt-3 border-t pt-3">
           <NotifyClientForm projectId={project.id} contactEmail={project.client?.contactEmail ?? null} />
         </div>
+      </Section>
+
+      {previous && (
+        <Section title={`Changes vs v${previous.number}`} action={<CompareButton projectId={project.id} versionId={version.id} hasDiff={!!diffData} />}>
+          {diffData && diffText ? (
+            <VersionDiff baseNumber={diffData.baseNumber} number={diffData.number} views={diffData.views} text={diffText} />
+          ) : (
+            <p className="text-muted-foreground">Render both versions and highlight what changed, so the client only reviews the differences.</p>
+          )}
+        </Section>
+      )}
+
+      <Section title="Review settings">
+        <form action={saveReviewSettingsAction} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="projectId" value={project.id} />
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Revision rounds
+            <input name="revisionLimit" type="number" min={0} max={20} defaultValue={project.revisionLimit} className="h-8 w-20 rounded-lg border bg-transparent px-2 text-sm text-foreground" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Approval deadline
+            <input name="reviewDeadline" type="date" defaultValue={project.reviewDeadline ? project.reviewDeadline.toISOString().slice(0, 10) : ""} className="h-8 rounded-lg border bg-transparent px-2 text-sm text-foreground" />
+          </label>
+          <Button type="submit" size="sm" variant="outline">
+            Save
+          </Button>
+        </form>
+        <p className="mt-2 text-muted-foreground">
+          Round {rounds}/{project.revisionLimit} used{rounds >= project.revisionLimit && project.revisionLimit > 0 ? "; further rounds are outside the agreed scope." : "."}
+          {deadline && <span className={`ml-2 text-${deadline.tone}`}>{deadline.label}</span>}
+        </p>
       </Section>
 
       <Section
@@ -300,6 +340,10 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
             </Button>
           </form>
           <div className="ml-auto flex items-center gap-2">
+            <span className="hidden md:inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground" title="Revision rounds used / agreed">
+              <span className={rounds > project.revisionLimit && project.revisionLimit > 0 ? "text-err" : ""}>R {rounds}/{project.revisionLimit}</span>
+              {deadline && <span className={`text-${deadline.tone}`}>{deadline.label}</span>}
+            </span>
             <CountBadges counts={counts} />
             <ShareDialog
               projectId={project.id}
