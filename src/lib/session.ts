@@ -26,14 +26,14 @@ export async function currentWorkspace() {
   const user = await requireUser();
   const ws = await db.workspace.findUnique({ where: { ownerId: user.id } });
   if (ws) return ws;
-  return db.workspace.create({ data: { ownerId: user.id, name: user.name || "Çalışma alanım", slug: `ws_${user.id}` } });
+  return db.workspace.create({ data: { ownerId: user.id, name: user.name || "My workspace", slug: `ws_${user.id}` } });
 }
 
 /** Throws unless the project belongs to the current user's workspace. Admins may access any project. */
 export async function requireProjectAccess(projectId: string) {
   const user = await requireUser();
   const project = await db.project.findUnique({ where: { id: projectId }, include: { workspace: true } });
-  if (!project) throw new Error("Proje bulunamadı");
-  if (user.role !== "admin" && project.workspace.ownerId !== user.id) throw new Error("Bu projeye erişimin yok");
+  if (!project) throw new Error("Project not found");
+  if (user.role !== "admin" && project.workspace.ownerId !== user.id) throw new Error("You do not have access to this project");
   return { user, project };
 }

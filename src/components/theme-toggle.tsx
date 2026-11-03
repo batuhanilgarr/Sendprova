@@ -10,7 +10,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon-sm"
-      aria-label="Temayı değiştir"
+      aria-label="Toggle theme"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
       <SunIcon className="hidden dark:block" />

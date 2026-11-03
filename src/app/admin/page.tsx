@@ -13,8 +13,8 @@ export const metadata = { title: "Admin" };
 export default function AdminPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12 flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Yönetim</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Yükleniyor…</p>}>
+      <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+      <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <Dashboard />
       </Suspense>
     </div>
@@ -66,25 +66,25 @@ async function Dashboard() {
   return (
     <>
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Üye" value={userCount} />
-        <Stat label="Proje" value={projectCount} />
-        <Stat label="Test gönderimi" value={sendCount} hint={`son 30 gün: ${sends30}`} />
-        <Stat label="Teslim edilen e-posta" value={deliveredCount} hint={`son 30 gün: ${deliveries30}`} />
+        <Stat label="Members" value={userCount} />
+        <Stat label="Projects" value={projectCount} />
+        <Stat label="Test sends" value={sendCount} hint={`last 30 days: ${sends30}`} />
+        <Stat label="Emails delivered" value={deliveredCount} hint={`last 30 days: ${deliveries30}`} />
       </section>
 
       <section>
-        <h2 className="text-sm font-medium mb-3">Üyeler</h2>
+        <h2 className="text-sm font-medium mb-3">Members</h2>
         <div className="rounded-xl border bg-card overflow-x-auto">
           <table className="w-full text-left">
             <thead className="text-[11px] uppercase tracking-wide text-muted-foreground border-b">
               <tr>
-                <th className="px-4 py-2 font-medium">Kullanıcı</th>
-                <th className="px-4 py-2 font-medium">Rol</th>
-                <th className="px-4 py-2 font-medium text-right">Proje</th>
-                <th className="px-4 py-2 font-medium text-right">Gönderim</th>
-                <th className="px-4 py-2 font-medium text-right">Kredi</th>
-                <th className="px-4 py-2 font-medium">Kayıt</th>
-                <th className="px-4 py-2 font-medium">İşlemler</th>
+                <th className="px-4 py-2 font-medium">User</th>
+                <th className="px-4 py-2 font-medium">Role</th>
+                <th className="px-4 py-2 font-medium text-right">Projects</th>
+                <th className="px-4 py-2 font-medium text-right">Sends</th>
+                <th className="px-4 py-2 font-medium text-right">Credits</th>
+                <th className="px-4 py-2 font-medium">Joined</th>
+                <th className="px-4 py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -98,14 +98,14 @@ async function Dashboard() {
                     <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role ?? "user"}</Badge>
                     {u.banned && (
                       <Badge variant="destructive" className="ml-1">
-                        askıda
+                        suspended
                       </Badge>
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono">{u.workspace?._count.projects ?? 0}</td>
                   <td className="px-4 py-2.5 text-right font-mono">{u.workspace ? (sendsByWorkspace.get(u.workspace.id) ?? 0) : 0}</td>
                   <td className="px-4 py-2.5 text-right font-mono">{u.workspace?.credits ?? 0}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{u.createdAt.toLocaleDateString("tr-TR")}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{u.createdAt.toLocaleDateString("en-US")}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-col gap-2 min-w-80">
                       {u.workspace && <CreditForm workspaceId={u.workspace.id} />}
@@ -115,19 +115,19 @@ async function Dashboard() {
                             <input type="hidden" name="userId" value={u.id} />
                             <input type="hidden" name="banned" value={u.banned ? "0" : "1"} />
                             <Button type="submit" size="xs" variant={u.banned ? "outline" : "destructive"}>
-                              {u.banned ? "Askıyı kaldır" : "Askıya al"}
+                              {u.banned ? "Unsuspend" : "Suspend"}
                             </Button>
                           </form>
                           <form action={setRole}>
                             <input type="hidden" name="userId" value={u.id} />
                             <input type="hidden" name="role" value={u.role === "admin" ? "user" : "admin"} />
                             <Button type="submit" size="xs" variant="outline">
-                              {u.role === "admin" ? "Admin'i kaldır" : "Admin yap"}
+                              {u.role === "admin" ? "Remove admin" : "Make admin"}
                             </Button>
                           </form>
                           {u.workspace && (
                             <Button size="xs" variant="ghost" nativeButton={false} render={<Link href={`/admin/users/${u.id}`} />}>
-                              Detay
+                              Details
                             </Button>
                           )}
                         </div>
@@ -142,9 +142,9 @@ async function Dashboard() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium mb-3">Son kredi hareketleri</h2>
+        <h2 className="text-sm font-medium mb-3">Recent credit activity</h2>
         <ul className="rounded-xl border bg-card divide-y">
-          {recentLedger.length === 0 && <li className="px-4 py-3 text-muted-foreground">Henüz hareket yok.</li>}
+          {recentLedger.length === 0 && <li className="px-4 py-3 text-muted-foreground">No activity yet.</li>}
           {recentLedger.map((l) => (
             <li key={l.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className={`font-mono w-14 text-right ${l.delta > 0 ? "text-ok" : "text-err"}`}>
@@ -154,7 +154,7 @@ async function Dashboard() {
               <span className="flex-1 truncate">{l.reason}</span>
               <span className="text-muted-foreground font-mono text-xs truncate max-w-48">{l.workspace.owner?.email ?? l.workspace.name}</span>
               <time className="text-muted-foreground text-xs whitespace-nowrap" dateTime={l.createdAt.toISOString()}>
-                {l.createdAt.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}
+                {l.createdAt.toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}
               </time>
             </li>
           ))}

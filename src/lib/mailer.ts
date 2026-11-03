@@ -38,7 +38,7 @@ export async function ensureDefaultSender(workspaceId: string) {
   return db.senderProfile.create({
     data: {
       workspaceId,
-      name: "Mailpit (yerel)",
+      name: "Mailpit (local)",
       fromName: m ? m[1].trim() : "Sendprova",
       fromEmail: m ? m[2].trim() : from,
       transport: "SMTP",
@@ -49,7 +49,7 @@ export async function ensureDefaultSender(workspaceId: string) {
 }
 
 function transportFor(transport: string, raw: unknown): Transporter {
-  if (transport !== "SMTP") throw new Error(`${transport} transport'u henüz desteklenmiyor`);
+  if (transport !== "SMTP") throw new Error(`${transport} transport is not supported yet`);
   const c = smtpConfigSchema.parse(raw);
   return nodemailer.createTransport({
     host: c.host,
@@ -88,14 +88,14 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
   const workspaceId = version.project.workspaceId;
   const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: opts.senderId, workspaceId } });
   const emails = [...new Set(opts.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
-  if (emails.length === 0) throw new Error("En az bir alıcı gerekli.");
+  if (emails.length === 0) throw new Error("At least one recipient is required.");
 
   // 1 credit per recipient, reserved up front inside a transaction so two
   // concurrent sends cannot overspend. Failed deliveries are refunded below.
   const testSend = await db.$transaction(async (tx) => {
     const ws = await tx.workspace.findUniqueOrThrow({ where: { id: workspaceId } });
     if (ws.credits < emails.length) {
-      throw new Error(`Yetersiz kredi: ${emails.length} gerekli, ${ws.credits} var.`);
+      throw new Error(`Not enough credits: ${emails.length} needed, ${ws.credits} available.`);
     }
     const created = await tx.testSend.create({
       data: {
@@ -109,7 +109,7 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
     });
     await tx.workspace.update({ where: { id: workspaceId }, data: { credits: { decrement: emails.length } } });
     await tx.creditLedger.create({
-      data: { workspaceId, delta: -emails.length, reason: `Test gönderimi: ${opts.subject}`, testSendId: created.id, byUserId: opts.userId },
+      data: { workspaceId, delta: -emails.length, reason: `Test send: ${opts.subject}`, testSendId: created.id, byUserId: opts.userId },
     });
     return created;
   });
@@ -145,7 +145,7 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
   if (failed > 0) {
     await db.$transaction([
       db.workspace.update({ where: { id: workspaceId }, data: { credits: { increment: failed } } }),
-      db.creditLedger.create({ data: { workspaceId, delta: failed, reason: "Başarısız teslimat iadesi", testSendId: testSend.id } }),
+      db.creditLedger.create({ data: { workspaceId, delta: failed, reason: "Refund for failed deliveries", testSendId: testSend.id } }),
     ]);
   }
 

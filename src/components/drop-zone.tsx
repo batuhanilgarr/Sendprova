@@ -54,7 +54,7 @@ export function DropZone() {
   const submit = useCallback(
     async (files: Collected[], pasted?: string) => {
       setError(null);
-      setBusy(files.length ? `${files.length} dosya yükleniyor…` : "İşleniyor…");
+      setBusy(files.length ? `Uploading ${files.length} file${files.length === 1 ? "" : "s"}…` : "Processing…");
       const form = new FormData();
       for (const { file, path } of files) {
         form.append("files", file);
@@ -64,7 +64,7 @@ export function DropZone() {
       try {
         const res = await fetch("/api/ingest", { method: "POST", body: form });
         const data = (await res.json()) as { projectId?: string; error?: string };
-        if (!res.ok || !data.projectId) throw new Error(data.error ?? "Yükleme başarısız");
+        if (!res.ok || !data.projectId) throw new Error(data.error ?? "Upload failed");
         router.push(`/app/p/${data.projectId}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -81,7 +81,7 @@ export function DropZone() {
     if (files.length === 0) {
       const text = e.dataTransfer.getData("text/plain");
       if (text.trim()) return submit([], text);
-      return setError("Bırakılan içerik tanınmadı.");
+      return setError("Dropped content was not recognized.");
     }
     submit(files);
   };
@@ -108,18 +108,18 @@ export function DropZone() {
         <div className="mx-auto mb-4 size-11 rounded-xl bg-muted grid place-items-center text-muted-foreground">
           <UploadIcon className="size-5" />
         </div>
-        <p className="font-medium text-[15px]">HTML, MJML, görselleri veya tüm klasörü buraya bırak</p>
+        <p className="font-medium text-[15px]">Drop your HTML, MJML, images or the whole folder here</p>
         <p className="text-muted-foreground mt-1 max-w-md mx-auto">
-          Zip de olur. Görseller otomatik barındırılır, <code className="font-mono">src</code> yolları yeniden yazılır.
+          Zip files work too. Images are hosted automatically and <code className="font-mono">src</code> paths are rewritten.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           <Button variant="outline" onClick={() => fileInput.current?.click()}>
             <FileIcon data-icon="inline-start" />
-            Dosya seç
+            Choose files
           </Button>
           <Button variant="outline" onClick={() => dirInput.current?.click()}>
             <FolderOpenIcon data-icon="inline-start" />
-            Klasör seç
+            Choose folder
           </Button>
         </div>
         <input ref={fileInput} type="file" multiple hidden onChange={(e) => onPick(e.target.files)} />
@@ -140,19 +140,19 @@ export function DropZone() {
 
       <details className="group rounded-xl border bg-card">
         <summary className="cursor-pointer select-none px-4 py-2.5 text-muted-foreground group-open:border-b">
-          veya kaynağı yapıştır
+          or paste the source
         </summary>
         <div className="p-3 flex flex-col gap-2">
           <Textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
             spellCheck={false}
-            placeholder="<html>…</html> veya <mjml>…</mjml>"
+            placeholder="<html>…</html> or <mjml>…</mjml>"
             className="font-mono text-xs min-h-40"
           />
           <div className="flex justify-end">
             <Button disabled={!source.trim() || !!busy} onClick={() => submit([], source)}>
-              Önizle
+              Preview
             </Button>
           </div>
         </div>

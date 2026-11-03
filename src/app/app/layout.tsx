@@ -36,7 +36,7 @@ async function UserNav() {
   const workspace = await currentWorkspace();
   return (
     <>
-      <Badge variant="secondary" className="font-mono gap-1" title="Kredi: 1 kredi = 1 alıcıya 1 test gönderimi">
+      <Badge variant="secondary" className="font-mono gap-1" title="Credits: 1 credit = 1 test send to 1 recipient">
         <CoinsIcon className="size-3" />
         {workspace.credits}
       </Badge>
@@ -48,7 +48,7 @@ async function UserNav() {
       )}
       <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/app/settings" />}>
         <SettingsIcon data-icon="inline-start" />
-        <span className="hidden sm:inline">Ayarlar</span>
+        <span className="hidden sm:inline">Settings</span>
       </Button>
       <form action={signOutAction}>
         <Button type="submit" variant="ghost" size="sm" title={user.email}>

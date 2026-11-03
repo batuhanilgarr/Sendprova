@@ -22,8 +22,8 @@ export function WorkbenchPanel({ summary, children }: { summary: React.ReactNode
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[85dvh] overflow-auto p-0 rounded-t-2xl">
             <SheetHeader className="sr-only">
-              <SheetTitle>Kontroller ve gönderim</SheetTitle>
-              <SheetDescription>Kontroller, görseller ve test gönderimi</SheetDescription>
+              <SheetTitle>Checks and sending</SheetTitle>
+              <SheetDescription>Checks, images and test sending</SheetDescription>
             </SheetHeader>
             {children}
           </SheetContent>

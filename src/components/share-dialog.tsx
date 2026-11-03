@@ -19,19 +19,19 @@ export function ShareDialog({ projectId, shares }: { projectId: string; shares: 
     <Dialog>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <Link2Icon data-icon="inline-start" />
-        <span className="hidden sm:inline">Paylaş</span>
+        <span className="hidden sm:inline">Share</span>
         {shares.length > 0 && <span className="font-mono text-[11px] text-muted-foreground">{shares.length}</span>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Paylaşım linki</DialogTitle>
+          <DialogTitle>Share link</DialogTitle>
           <DialogDescription>
-            Giriş gerektirmez, salt okunur. Her zaman projenin son versiyonunu gösterir; istediğin an iptal edebilirsin.
+            No sign-in required, read-only. Always shows the latest version of the project; revoke it any time.
           </DialogDescription>
         </DialogHeader>
 
         {shares.length === 0 ? (
-          <p className="text-muted-foreground">Henüz link yok.</p>
+          <p className="text-muted-foreground">No links yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {shares.map((s) => (
@@ -42,7 +42,7 @@ export function ShareDialog({ projectId, shares }: { projectId: string; shares: 
                   <input type="hidden" name="id" value={s.id} />
                   <input type="hidden" name="projectId" value={projectId} />
                   <Button type="submit" variant="destructive" size="sm">
-                    İptal
+                    Revoke
                   </Button>
                 </form>
               </li>
@@ -54,11 +54,11 @@ export function ShareDialog({ projectId, shares }: { projectId: string; shares: 
           <input type="hidden" name="projectId" value={projectId} />
           {shares.length > 0 && (
             <span className="text-muted-foreground text-xs">
-              {shares.reduce((n, s) => n + s.views, 0)} görüntülenme
+              {shares.reduce((n, s) => n + s.views, 0)} views
             </span>
           )}
           <Button type="submit" size="sm" className="ml-auto">
-            Yeni link oluştur
+            Create new link
           </Button>
         </form>
       </DialogContent>
@@ -72,7 +72,7 @@ function CopyButton({ text }: { text: string }) {
     <Button
       variant="outline"
       size="icon-sm"
-      aria-label="Kopyala"
+      aria-label="Copy"
       onClick={async () => {
         await navigator.clipboard.writeText(text);
         setDone(true);

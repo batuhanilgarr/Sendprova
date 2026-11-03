@@ -8,13 +8,13 @@ import { ensureDefaultSender, smtpConfigSchema } from "@/lib/mailer";
 import { deleteGroup, deleteSender, setDefaultSender } from "./actions";
 import { GroupForm, SenderForm, TestConnectionButton } from "./forms";
 
-export const metadata = { title: "Ayarlar" };
+export const metadata = { title: "Settings" };
 
 export default function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 flex flex-col gap-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Ayarlar</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Yükleniyor…</p>}>
+      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <Senders />
       </Suspense>
       <Suspense fallback={null}>
@@ -41,7 +41,7 @@ async function Senders() {
 
   return (
     <section>
-      <SectionHeader title="Gönderici profilleri" description="Test e-postaları bu SMTP hesaplarından çıkar. Yerelde Mailpit, üretimde Gmail, SES veya Resend SMTP." />
+      <SectionHeader title="Sender profiles" description="Test emails go out through these SMTP accounts. Mailpit locally; Gmail, SES or Resend SMTP in production." />
       <ul className="flex flex-col gap-3">
         {senders.map((s) => {
           const c = smtpConfigSchema.safeParse(s.config);
@@ -49,7 +49,7 @@ async function Senders() {
             <li key={s.id} className="rounded-xl border bg-card">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b">
                 <span className="font-medium">{s.name}</span>
-                {s.isDefault && <Badge>varsayılan</Badge>}
+                {s.isDefault && <Badge>default</Badge>}
                 <span className="basis-full sm:basis-auto text-muted-foreground font-mono text-xs truncate">
                   {s.fromName} &lt;{s.fromEmail}&gt; · {c.success ? `${c.data.host}:${c.data.port}` : "?"}
                 </span>
@@ -59,20 +59,20 @@ async function Senders() {
                     <form action={setDefaultSender}>
                       <input type="hidden" name="id" value={s.id} />
                       <Button type="submit" variant="outline" size="sm">
-                        Varsayılan yap
+                        Make default
                       </Button>
                     </form>
                   )}
                   <form action={deleteSender}>
                     <input type="hidden" name="id" value={s.id} />
                     <Button type="submit" variant="destructive" size="sm">
-                      Sil
+                      Delete
                     </Button>
                   </form>
                 </div>
               </div>
               <details>
-                <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Düzenle</summary>
+                <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
                 <div className="px-4 pb-4">
                   <SenderForm
                     initial={{
@@ -92,7 +92,7 @@ async function Senders() {
           );
         })}
         <li className="rounded-xl border border-dashed p-4">
-          <h3 className="font-medium mb-3">Yeni gönderici</h3>
+          <h3 className="font-medium mb-3">New sender</h3>
           <SenderForm />
         </li>
       </ul>
@@ -111,22 +111,22 @@ async function Groups() {
 
   return (
     <section>
-      <SectionHeader title="Alıcı grupları" description="Ekip, Müşteri X gibi kayıtlı listeler. Gönderim panelinde tek tıkla seçilir." />
+      <SectionHeader title="Recipient groups" description="Saved lists such as Team or Client X, selectable with one click in the send panel." />
       <ul className="flex flex-col gap-3">
         {groups.map((g) => (
           <li key={g.id} className="rounded-xl border bg-card">
             <div className="flex items-center gap-3 px-4 py-3 border-b">
               <span className="font-medium">{g.name}</span>
-              <Badge variant="secondary">{g.recipients.length} alıcı</Badge>
+              <Badge variant="secondary">{g.recipients.length} recipient{g.recipients.length === 1 ? "" : "s"}</Badge>
               <form action={deleteGroup} className="ml-auto">
                 <input type="hidden" name="id" value={g.id} />
                 <Button type="submit" variant="destructive" size="sm">
-                  Sil
+                  Delete
                 </Button>
               </form>
             </div>
             <details>
-              <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Düzenle</summary>
+              <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
               <div className="px-4 pb-4">
                 <GroupForm initial={{ id: g.id, name: g.name, emails: g.recipients.map((r) => r.email).join("\n") }} />
               </div>
@@ -134,7 +134,7 @@ async function Groups() {
           </li>
         ))}
         <li className="rounded-xl border border-dashed p-4">
-          <h3 className="font-medium mb-3">Yeni grup</h3>
+          <h3 className="font-medium mb-3">New group</h3>
           <GroupForm />
         </li>
       </ul>

@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin",
 
 export const metadata: Metadata = {
   title: { default: "Sendprova", template: "%s · Sendprova" },
-  description: "HTML mailing önizleme, kontrol ve test gönderimi",
+  description: "Preview, check and test-send HTML email campaigns",
 };
 
 export const viewport: Viewport = {
@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <TooltipProvider>{children}</TooltipProvider>

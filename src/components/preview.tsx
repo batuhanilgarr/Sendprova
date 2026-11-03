@@ -7,9 +7,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const DEVICES = {
-  desktop: { label: "Masaüstü", width: 1000, frame: false, Icon: MonitorIcon },
+  desktop: { label: "Desktop", width: 1000, frame: false, Icon: MonitorIcon },
   tablet: { label: "Tablet", width: 768, frame: true, Icon: TabletIcon },
-  mobile: { label: "Mobil", width: 390, frame: true, Icon: SmartphoneIcon },
+  mobile: { label: "Mobile", width: 390, frame: true, Icon: SmartphoneIcon },
 } as const;
 type DeviceKey = keyof typeof DEVICES;
 
@@ -75,21 +75,21 @@ export function Preview({ src }: { src: string }) {
         </Tabs>
         <div className="ml-auto flex items-center gap-1">
           <Button variant="outline" size="sm" onClick={() => setFit((f) => !f)} aria-pressed={fit}>
-            {fit ? `Sığdır · ${Math.round(scale * 100)}%` : "100%"}
+            {fit ? `Fit · ${Math.round(scale * 100)}%` : "100%"}
           </Button>
           <Tooltip>
             <TooltipTrigger render={<Button variant="outline" size="sm" onClick={() => setShrink((s) => !s)} aria-pressed={shrink} />}>
-              {shrink ? "İstemci ölçekler" : "Gerçek boyut"}
+              {shrink ? "Client scaling" : "Actual size"}
             </TooltipTrigger>
-            <TooltipContent>Mobil istemciler sabit genişlikli e-postayı ekrana sığdırmak için küçültür</TooltipContent>
+            <TooltipContent>Mobile clients zoom out fixed-width emails to fit the screen</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger render={<Button variant="outline" size="icon-sm" disabled aria-label="Koyu mod" />}>
+            <TooltipTrigger render={<Button variant="outline" size="icon-sm" disabled aria-label="Dark mode" />}>
               <MoonIcon />
             </TooltipTrigger>
-            <TooltipContent>Dark mode simülasyonu v0.2&apos;de</TooltipContent>
+            <TooltipContent>Dark mode simulation coming in v0.2</TooltipContent>
           </Tooltip>
-          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<a href={src} target="_blank" rel="noreferrer" aria-label="Yeni sekmede aç" />}>
+          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<a href={src} target="_blank" rel="noreferrer" aria-label="Open in new tab" />}>
             <ExternalLinkIcon />
           </Button>
         </div>
@@ -109,7 +109,7 @@ export function Preview({ src }: { src: string }) {
               ref={iframe}
               key={src}
               sandbox="allow-same-origin"
-              title="E-posta önizleme"
+              title="Email preview"
               style={{ width, height }}
               className="block bg-white"
               onLoad={applyFit}

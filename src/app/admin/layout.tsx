@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         <nav className="ml-auto flex items-center gap-1">
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/app" />}>
             <ArrowLeftIcon data-icon="inline-start" />
-            Uygulama
+            App
           </Button>
           <ThemeToggle />
         </nav>

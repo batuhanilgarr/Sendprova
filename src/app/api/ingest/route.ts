@@ -14,9 +14,9 @@ export const maxDuration = 60;
  */
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || session.user.banned) return Response.json({ error: "Giriş yapmalısın" }, { status: 401 });
+  if (!session || session.user.banned) return Response.json({ error: "You must be signed in" }, { status: 401 });
   const workspace = await db.workspace.findUnique({ where: { ownerId: session.user.id } });
-  if (!workspace) return Response.json({ error: "Çalışma alanı bulunamadı" }, { status: 400 });
+  if (!workspace) return Response.json({ error: "Workspace not found" }, { status: 400 });
   const form = await request.formData();
   const blobs = form.getAll("files").filter((v): v is File => v instanceof File);
   const paths = form.getAll("paths").map(String);
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     });
     return Response.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Yükleme başarısız";
+    const message = err instanceof Error ? err.message : "Upload failed";
     return Response.json({ error: message }, { status: 400 });
   }
 }

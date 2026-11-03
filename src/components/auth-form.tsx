@@ -11,7 +11,7 @@ import { authClient } from "@/lib/auth-client";
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const params = useSearchParams();
-  const [error, setError] = useState<string | null>(params.get("banned") ? "Hesabın askıya alınmış." : null);
+  const [error, setError] = useState<string | null>(params.get("banned") ? "Your account has been suspended." : null);
   const [pending, setPending] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -38,35 +38,35 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {mode === "register" && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="name">Ad</Label>
+          <Label htmlFor="name">Name</Label>
           <Input id="name" name="name" autoComplete="name" required />
         </div>
       )}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">E-posta</Label>
+        <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Şifre</Label>
+        <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" minLength={8} autoComplete={mode === "register" ? "new-password" : "current-password"} required />
       </div>
       {error && <p className="text-err">{error}</p>}
       <Button type="submit" size="lg" disabled={pending}>
-        {pending ? "Bekle…" : mode === "register" ? "Hesap oluştur" : "Giriş yap"}
+        {pending ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}
       </Button>
       <p className="text-muted-foreground text-center">
         {mode === "register" ? (
           <>
-            Hesabın var mı?{" "}
+            Already have an account?{" "}
             <Link href="/login" className="underline underline-offset-2">
-              Giriş yap
+              Sign in
             </Link>
           </>
         ) : (
           <>
-            Hesabın yok mu?{" "}
+            No account yet?{" "}
             <Link href="/register" className="underline underline-offset-2">
-              Kayıt ol
+              Sign up
             </Link>
           </>
         )}
@@ -78,15 +78,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 function translate(code: string | undefined, fallback: string | undefined) {
   switch (code) {
     case "INVALID_EMAIL_OR_PASSWORD":
-      return "E-posta veya şifre hatalı.";
+      return "Incorrect email or password.";
     case "USER_ALREADY_EXISTS":
     case "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL":
-      return "Bu e-posta ile zaten bir hesap var.";
+      return "An account with this email already exists.";
     case "PASSWORD_TOO_SHORT":
-      return "Şifre en az 8 karakter olmalı.";
+      return "Password must be at least 8 characters.";
     case "BANNED_USER":
-      return "Hesabın askıya alınmış.";
+      return "Your account has been suspended.";
     default:
-      return fallback ?? "Bir şeyler ters gitti.";
+      return fallback ?? "Something went wrong.";
   }
 }

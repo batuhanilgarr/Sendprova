@@ -12,7 +12,7 @@ export default function ShareLayout({ children }: LayoutProps<"/s/[token]">) {
           </span>
           Sendprova
         </Link>
-        <span className="text-muted-foreground text-xs">paylaşılan önizleme</span>
+        <span className="text-muted-foreground text-xs">shared preview</span>
         <div className="ml-auto">
           <ThemeToggle />
         </div>

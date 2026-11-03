@@ -25,11 +25,11 @@ export const auth = betterAuth({
             ? await db.workspace.findFirst({ where: { slug: "default", ownerId: null } })
             : null;
           if (legacy) {
-            await db.workspace.update({ where: { id: legacy.id }, data: { ownerId: user.id, name: user.name || "Çalışma alanım" } });
+            await db.workspace.update({ where: { id: legacy.id }, data: { ownerId: user.id, name: user.name || "My workspace" } });
           } else {
             await db.workspace.create({
-              data: { ownerId: user.id, name: user.name || "Çalışma alanım", slug: `ws_${user.id}`, credits: SIGNUP_CREDITS,
-                ledger: { create: { delta: SIGNUP_CREDITS, reason: "Kayıt hediyesi" } } },
+              data: { ownerId: user.id, name: user.name || "My workspace", slug: `ws_${user.id}`, credits: SIGNUP_CREDITS,
+                ledger: { create: { delta: SIGNUP_CREDITS, reason: "Sign-up bonus" } } },
             });
           }
         },

@@ -10,10 +10,10 @@ export type ActionState = { ok?: string; error?: string } | null;
 
 const senderSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "Profil adı gerekli"),
-  fromName: z.string().min(1, "Gönderen adı gerekli"),
-  fromEmail: z.string().email("Geçerli bir e-posta girin"),
-  host: z.string().min(1, "SMTP sunucusu gerekli"),
+  name: z.string().min(1, "Profile name is required"),
+  fromName: z.string().min(1, "From name is required"),
+  fromEmail: z.string().email("Enter a valid email address"),
+  host: z.string().min(1, "SMTP host is required"),
   port: z.coerce.number().int().min(1).max(65535),
   secure: z.coerce.boolean().default(false),
   user: z.string().optional().default(""),
@@ -43,7 +43,7 @@ export async function saveSender(_prev: ActionState, form: FormData): Promise<Ac
     });
   }
   revalidatePath("/app/settings");
-  return { ok: "Gönderici kaydedildi." };
+  return { ok: "Sender saved." };
 }
 
 export async function deleteSender(form: FormData) {
@@ -68,7 +68,7 @@ export async function testSenderConnection(_prev: ActionState, form: FormData): 
     const workspace = await currentWorkspace();
     const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
     await verifySender(sender.id);
-    return { ok: "SMTP bağlantısı başarılı." };
+    return { ok: "SMTP connection succeeded." };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
@@ -76,7 +76,7 @@ export async function testSenderConnection(_prev: ActionState, form: FormData): 
 
 const groupSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "Grup adı gerekli"),
+  name: z.string().min(1, "Group name is required"),
   emails: z.string(),
 });
 
@@ -85,7 +85,7 @@ export async function saveGroup(_prev: ActionState, form: FormData): Promise<Act
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { id, name } = parsed.data;
   const emails = parseEmails(parsed.data.emails);
-  if (emails.length === 0) return { error: "En az bir geçerli e-posta girin." };
+  if (emails.length === 0) return { error: "Enter at least one valid email address." };
   const workspace = await currentWorkspace();
 
   if (id) {
@@ -99,7 +99,7 @@ export async function saveGroup(_prev: ActionState, form: FormData): Promise<Act
     });
   }
   revalidatePath("/app/settings");
-  return { ok: "Grup kaydedildi." };
+  return { ok: "Group saved." };
 }
 
 export async function deleteGroup(form: FormData) {

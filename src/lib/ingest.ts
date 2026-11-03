@@ -81,7 +81,7 @@ export async function ingest(input: IngestInput) {
   } else if (input.pastedSource?.trim()) {
     source = input.pastedSource;
   } else {
-    throw new Error("HTML veya MJML kaynağı bulunamadı. Bir .html/.mjml dosyası bırakın ya da kaynağı yapıştırın.");
+    throw new Error("No HTML or MJML source found. Drop an .html/.mjml file or paste the source.");
   }
 
   const project = input.projectId
@@ -89,7 +89,7 @@ export async function ingest(input: IngestInput) {
     : await db.project.create({
         data: {
           workspaceId: input.workspaceId,
-          name: input.projectName?.trim() || titleFrom(source) || sourceFile?.path || "Adsız mailing",
+          name: input.projectName?.trim() || titleFrom(source) || sourceFile?.path || "Untitled mailing",
         },
       });
 

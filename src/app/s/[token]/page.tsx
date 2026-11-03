@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { resolveShare } from "@/lib/share";
 
-export const metadata: Metadata = { title: "Önizleme", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
 
 type Params = PageProps<"/s/[token]">["params"];
 
 export default function SharePage({ params }: PageProps<"/s/[token]">) {
   return (
-    <Suspense fallback={<div className="p-6 text-muted-foreground">Yükleniyor…</div>}>
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading…</div>}>
       <Shared params={params} />
     </Suspense>
   );
@@ -35,7 +35,7 @@ async function Shared({ params }: { params: Params }) {
           v{version.number}
         </Badge>
         <span className="ml-auto text-muted-foreground text-xs hidden sm:inline">
-          {version.createdAt.toLocaleDateString("tr-TR")} · salt okunur önizleme
+          {version.createdAt.toLocaleDateString("en-US")} · read-only preview
         </span>
       </div>
       <Preview src={`/api/share/${token}/html`} />

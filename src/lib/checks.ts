@@ -37,7 +37,7 @@ async function checkUrl(url: string) {
     if (res.body) void res.body.cancel();
     return { status: res.status, ok: res.ok, finalUrl: res.url !== url ? res.url : undefined, bytes, contentType };
   } catch (err) {
-    const error = err instanceof Error ? (err.name === "AbortError" ? "zaman aşımı" : err.message) : String(err);
+    const error = err instanceof Error ? (err.name === "AbortError" ? "timed out" : err.message) : String(err);
     return { status: null, ok: false, bytes: null, contentType: null, error };
   }
 }
@@ -59,7 +59,7 @@ export function extractTargets(html: string) {
     // Spacer / tracking pixels legitimately have alt="". Only flag a missing attribute on visible images.
     const w = Number($(el).attr("width") ?? 0);
     const h = Number($(el).attr("height") ?? 0);
-    if (alt === undefined && !(w <= 1 && h <= 1)) altMissing.push(src || "(src yok)");
+    if (alt === undefined && !(w <= 1 && h <= 1)) altMissing.push(src || "(no src)");
   });
   return { links: [...links], images: [...images], altMissing };
 }

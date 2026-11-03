@@ -33,16 +33,16 @@ export function SenderForm({
   return (
     <form action={action} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {initial && <input type="hidden" name="id" value={initial.id} />}
-      <Field label="Profil adı" className="sm:col-span-2">
+      <Field label="Profile name" className="sm:col-span-2">
         <Input name="name" defaultValue={initial?.name} placeholder="Gmail, Amazon SES…" required />
       </Field>
-      <Field label="Gönderen adı">
-        <Input name="fromName" defaultValue={initial?.fromName} placeholder="Anadolubank" required />
+      <Field label="From name">
+        <Input name="fromName" defaultValue={initial?.fromName} placeholder="Acme Inc." required />
       </Field>
-      <Field label="Gönderen e-posta">
-        <Input name="fromEmail" type="email" defaultValue={initial?.fromEmail} placeholder="test@sirket.com" required />
+      <Field label="From email">
+        <Input name="fromEmail" type="email" defaultValue={initial?.fromEmail} placeholder="test@company.com" required />
       </Field>
-      <Field label="SMTP sunucusu">
+      <Field label="SMTP host">
         <Input name="host" defaultValue={initial?.host} placeholder="smtp.gmail.com" required />
       </Field>
       <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
@@ -53,14 +53,14 @@ export function SenderForm({
           <Checkbox name="secure" defaultChecked={initial?.secure} /> TLS (465)
         </Label>
       </div>
-      <Field label="Kullanıcı">
+      <Field label="Username">
         <Input name="user" defaultValue={initial?.user} autoComplete="off" />
       </Field>
-      <Field label="Şifre" hint={initial ? "(boş bırakırsan değişmez)" : undefined}>
+      <Field label="Password" hint={initial ? "(leave blank to keep current)" : undefined}>
         <Input name="pass" type="password" autoComplete="new-password" />
       </Field>
       <div className="sm:col-span-2 flex items-center gap-3">
-        <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
+        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
         <Status state={state} />
       </div>
     </form>
@@ -73,11 +73,11 @@ export function TestConnectionButton({ id }: { id: string }) {
     <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <Button type="submit" variant="outline" size="sm" disabled={pending}>
-        {pending ? "Deneniyor…" : "Bağlantıyı dene"}
+        {pending ? "Testing…" : "Test connection"}
       </Button>
       {state && (
         <span className={state.error ? "text-err" : "text-ok"} title={state.error}>
-          {state.error ? "Hata" : "OK"}
+          {state.error ? "Error" : "OK"}
         </span>
       )}
     </form>
@@ -89,14 +89,14 @@ export function GroupForm({ initial }: { initial?: { id: string; name: string; e
   return (
     <form action={action} className="flex flex-col gap-3">
       {initial && <input type="hidden" name="id" value={initial.id} />}
-      <Field label="Grup adı">
-        <Input name="name" defaultValue={initial?.name} placeholder="Ekip" required />
+      <Field label="Group name">
+        <Input name="name" defaultValue={initial?.name} placeholder="Team" required />
       </Field>
-      <Field label="E-postalar" hint="(satır, virgül veya boşlukla ayır)">
+      <Field label="Email addresses" hint="(separate with newlines, commas or spaces)">
         <Textarea name="emails" defaultValue={initial?.emails} rows={4} className="font-mono text-xs" required />
       </Field>
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
+        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
         <Status state={state} />
       </div>
     </form>

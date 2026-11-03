@@ -36,8 +36,8 @@ export type SendState = { ok?: string; error?: string } | null;
 const schema = z.object({
   versionId: z.string().min(1),
   projectId: z.string().min(1),
-  senderId: z.string().min(1, "Gönderici seçin"),
-  subject: z.string().min(1, "Konu gerekli"),
+  senderId: z.string().min(1, "Select a sender"),
+  subject: z.string().min(1, "Subject is required"),
   groupIds: z.array(z.string()).default([]),
   extra: z.string().default(""),
 });
@@ -64,14 +64,14 @@ export async function sendTestAction(_prev: SendState, form: FormData): Promise<
     ? await db.recipientGroup.findMany({ where: { id: { in: groupIds } }, include: { recipients: true } })
     : [];
   const emails = [...groups.flatMap((g) => g.recipients.map((r) => r.email)), ...parseEmails(extra)];
-  if (emails.length === 0) return { error: "Bir grup seçin veya e-posta girin." };
+  if (emails.length === 0) return { error: "Select a group or enter an email address." };
 
   try {
     const result = await sendTest({ versionId, senderId, subject, emails, userId: user.id });
     revalidatePath(`/app/p/${projectId}`);
     const sent = result.deliveries.filter((d) => d.status === "SENT").length;
     const failed = result.deliveries.length - sent;
-    return failed ? { error: `${sent} gönderildi, ${failed} başarısız.` } : { ok: `${sent} alıcıya gönderildi.` };
+    return failed ? { error: `${sent} sent, ${failed} failed.` } : { ok: `Sent to ${sent} recipient${sent === 1 ? "" : "s"}.` };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }

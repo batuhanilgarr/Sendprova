@@ -10,13 +10,13 @@ export default function Home() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 flex flex-col gap-10">
       <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Yeni mailing</h1>
-        <p className="text-muted-foreground mt-1 mb-5">Bırak, önizle, kontrol et, gönder.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">New mailing</h1>
+        <p className="text-muted-foreground mt-1 mb-5">Drop, preview, check, send.</p>
         <DropZone />
       </section>
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">Projeler</h2>
-        <Suspense fallback={<p className="text-muted-foreground">Yükleniyor…</p>}>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">Projects</h2>
+        <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
           <ProjectList />
         </Suspense>
       </section>
@@ -35,7 +35,7 @@ async function ProjectList() {
       versions: { orderBy: { number: "desc" }, take: 1, select: { number: true, htmlBytes: true, createdAt: true, sourceKind: true } },
     },
   });
-  if (projects.length === 0) return <p className="text-muted-foreground">Henüz proje yok.</p>;
+  if (projects.length === 0) return <p className="text-muted-foreground">No projects yet.</p>;
   return (
     <ul className="divide-y rounded-xl border bg-card overflow-hidden">
       {projects.map((p) => {
@@ -52,7 +52,7 @@ async function ProjectList() {
                   <span className="text-muted-foreground font-mono text-xs">v{v.number}</span>
                   <span className="hidden sm:inline text-muted-foreground font-mono text-xs">{(v.htmlBytes / 1024).toFixed(1)} KB</span>
                   <time className="text-muted-foreground text-xs" dateTime={v.createdAt.toISOString()}>
-                    {v.createdAt.toLocaleDateString("tr-TR")}
+                    {v.createdAt.toLocaleDateString("en-US")}
                   </time>
                 </>
               )}

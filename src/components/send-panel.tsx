@@ -31,12 +31,12 @@ export function SendPanel({
       <input type="hidden" name="projectId" value={projectId} />
 
       <div className="flex flex-col gap-1.5">
-        <Label>Konu</Label>
+        <Label>Subject</Label>
         <Input name="subject" defaultValue={defaultSubject} required />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>Gönderici</Label>
+        <Label>Sender</Label>
         <select
           name="senderId"
           defaultValue={defaultSender?.id}
@@ -52,7 +52,7 @@ export function SendPanel({
 
       {groups.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="text-sm font-medium mb-1.5">Alıcı grupları</legend>
+          <legend className="text-sm font-medium mb-1.5">Recipient groups</legend>
           {groups.map((g) => (
             <Label key={g.id} className="flex items-center gap-2 rounded-lg border px-2.5 py-2 font-normal has-data-checked:border-primary/50 has-data-checked:bg-primary/5">
               <Checkbox name="groupIds" value={g.id} />
@@ -64,14 +64,14 @@ export function SendPanel({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label>Ek alıcılar</Label>
-        <Textarea name="extra" rows={2} placeholder="ad@ornek.com, diger@ornek.com" className="font-mono text-xs" />
+        <Label>Extra recipients</Label>
+        <Textarea name="extra" rows={2} placeholder="name@example.com, other@example.com" className="font-mono text-xs" />
       </div>
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
           <SendIcon data-icon="inline-start" />
-          {pending ? "Gönderiliyor…" : "Test gönder"}
+          {pending ? "Sending…" : "Send test"}
         </Button>
         {state && <span className={state.error ? "text-err" : "text-ok"}>{state.error ?? state.ok}</span>}
       </div>

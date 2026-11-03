@@ -23,7 +23,7 @@ type Check = { tone: Tone; text: string };
 
 export default function ProjectPage({ params, searchParams }: PageProps<"/app/p/[id]">) {
   return (
-    <Suspense fallback={<div className="p-6 text-muted-foreground">Yükleniyor…</div>}>
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading…</div>}>
       <Workbench params={params} searchParams={searchParams} />
     </Suspense>
   );
@@ -62,33 +62,33 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
   const kb = version.htmlBytes / 1024;
   const checks: Check[] = [
     version.htmlBytes > GMAIL_CLIP_BYTES
-      ? { tone: "warn", text: `HTML ${kb.toFixed(1)} KB. Gmail 102 KB üzerini kırpar.` }
-      : { tone: "ok", text: `HTML ${kb.toFixed(1)} KB, Gmail sınırının altında.` },
+      ? { tone: "warn", text: `HTML is ${kb.toFixed(1)} KB. Gmail clips messages over 102 KB.` }
+      : { tone: "ok", text: `HTML is ${kb.toFixed(1)} KB, under the Gmail limit.` },
     version.missingAssets.length
-      ? { tone: "err", text: `${version.missingAssets.length} görsel referansı eşleşmedi.` }
-      : { tone: "ok", text: `${version.assets.length} görsel barındırıldı, tüm referanslar eşleşti.` },
+      ? { tone: "err", text: `${version.missingAssets.length} image reference${version.missingAssets.length === 1 ? "" : "s"} could not be matched.` }
+      : { tone: "ok", text: `${version.assets.length} image${version.assets.length === 1 ? "" : "s"} hosted, all references matched.` },
     version.placeholders.length
-      ? { tone: "warn", text: `${version.placeholders.length} placeholder bulundu; test gönderiminde ham gider.` }
-      : { tone: "ok", text: "Placeholder yok." },
+      ? { tone: "warn", text: `${version.placeholders.length} placeholder${version.placeholders.length === 1 ? "" : "s"} found; sent as-is in test sends.` }
+      : { tone: "ok", text: "No placeholders." },
     /charset=.*utf-8|<meta[^>]+charset=["']?utf-8/i.test(version.html)
-      ? { tone: "ok", text: "charset UTF-8 tanımlı." }
-      : { tone: "warn", text: "charset UTF-8 tanımlı değil; Türkçe karakterler bozulabilir." },
+      ? { tone: "ok", text: "UTF-8 charset declared." }
+      : { tone: "warn", text: "No UTF-8 charset declared; accented and non-Latin characters may break." },
   ];
   if (live) {
     const badLinks = live.links.filter((l) => !l.ok);
     const badImages = live.images.filter((i) => !i.ok);
     checks.push(
       badLinks.length
-        ? { tone: "err", text: `${badLinks.length} / ${live.links.length} link yanıt vermiyor.` }
-        : { tone: "ok", text: `${live.links.length} link kontrol edildi, hepsi çalışıyor.` },
+        ? { tone: "err", text: `${badLinks.length} of ${live.links.length} links are not responding.` }
+        : { tone: "ok", text: `${live.links.length} link${live.links.length === 1 ? "" : "s"} checked, all working.` },
       badImages.length
-        ? { tone: "err", text: `${badImages.length} / ${live.images.length} görsel yüklenemiyor.` }
-        : { tone: "ok", text: `${live.images.length} görsel erişilebilir, toplam ${(live.totalImageBytes / 1024).toFixed(0)} KB.` },
+        ? { tone: "err", text: `${badImages.length} of ${live.images.length} images fail to load.` }
+        : { tone: "ok", text: `${live.images.length} image${live.images.length === 1 ? "" : "s"} reachable, ${(live.totalImageBytes / 1024).toFixed(0)} KB total.` },
       live.altMissing.length
-        ? { tone: "warn", text: `${live.altMissing.length} görselde alt metni yok.` }
-        : { tone: "ok", text: "Tüm görsellerde alt metni var." },
+        ? { tone: "warn", text: `${live.altMissing.length} image${live.altMissing.length === 1 ? "" : "s"} missing alt text.` }
+        : { tone: "ok", text: "All images have alt text." },
     );
-    if (live.totalImageBytes > 1024 * 1024) checks.push({ tone: "warn", text: "Görseller 1 MB'ı aşıyor; mobilde yavaş açılır." });
+    if (live.totalImageBytes > 1024 * 1024) checks.push({ tone: "warn", text: "Images exceed 1 MB; the email will load slowly on mobile." });
   }
   const counts = { ok: 0, warn: 0, err: 0 };
   for (const c of checks) counts[c.tone]++;
@@ -96,14 +96,14 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
   const panel = (
     <>
       <Section
-        title="Kontroller"
+        title="Checks"
         action={
           <form action={runChecksAction}>
             <input type="hidden" name="versionId" value={version.id} />
             <input type="hidden" name="projectId" value={project.id} />
             <Button type="submit" variant="outline" size="xs">
               <RefreshCwIcon data-icon="inline-start" />
-              {live ? "Yeniden" : "Linkleri kontrol et"}
+              {live ? "Re-run" : "Check links"}
             </Button>
           </form>
         }
@@ -134,7 +134,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
               ))}
             {live.altMissing.map((src, i) => (
               <li key={i} className="text-warn truncate">
-                alt yok: {src.split("/").pop()}
+                missing alt: {src.split("/").pop()}
               </li>
             ))}
           </ul>
@@ -142,13 +142,13 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
       </Section>
 
       {version.subject && (
-        <Section title="Konu (title)">
+        <Section title="Subject (title)">
           <p className="text-muted-foreground">{version.subject}</p>
         </Section>
       )}
 
       {version.placeholders.length > 0 && (
-        <Section title="Placeholder'lar">
+        <Section title="Placeholders">
           <ul className="flex flex-wrap gap-1">
             {version.placeholders.map((p) => (
               <li key={p}>
@@ -162,7 +162,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
       )}
 
       {version.missingAssets.length > 0 && (
-        <Section title="Eşleşmeyen görseller">
+        <Section title="Unmatched images">
           <ul className="flex flex-col gap-1 font-mono text-[11px] text-err">
             {version.missingAssets.map((m) => (
               <li key={m} className="truncate">
@@ -173,7 +173,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
         </Section>
       )}
 
-      <Section title={`Görseller · ${version.assets.length}`}>
+      <Section title={`Images · ${version.assets.length}`}>
         <ul className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-4 gap-1.5">
           {version.assets
             .filter((a) => a.mime.startsWith("image/"))
@@ -186,7 +186,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
         </ul>
       </Section>
 
-      <Section title="Test gönderimi">
+      <Section title="Send test">
         <SendPanel
           versionId={version.id}
           projectId={project.id}
@@ -195,16 +195,16 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
           groups={groups.map((g) => ({ id: g.id, name: g.name, count: g._count.recipients }))}
         />
         <p className="text-muted-foreground mt-2">
-          Gönderici ve grupları{" "}
+          Manage senders and groups in{" "}
           <Link href="/app/settings" className="underline underline-offset-2">
-            Ayarlar
+            Settings
           </Link>
-          &apos;dan yönet.
+          .
         </p>
       </Section>
 
       {sends.length > 0 && (
-        <Section title="Gönderim geçmişi">
+        <Section title="Send history">
           <ul className="flex flex-col gap-3">
             {sends.map((s) => (
               <li key={s.id}>
@@ -212,7 +212,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
                   <Dot tone={s.status === "SENT" ? "ok" : s.status === "FAILED" ? "err" : "warn"} />
                   <span className="truncate flex-1">{s.subject}</span>
                   <time className="text-muted-foreground text-xs" dateTime={s.createdAt.toISOString()}>
-                    {s.createdAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                    {s.createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                   </time>
                 </div>
                 <ul className="mt-1 ml-4 flex flex-col gap-0.5 font-mono text-[11px]">
@@ -234,7 +234,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
     <div className="flex-1 flex min-h-0">
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="min-h-11 shrink-0 border-b bg-background flex items-center gap-2 px-3 sm:px-4 py-1.5">
-          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href="/app" aria-label="Projelere dön" />}>
+          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href="/app" aria-label="Back to projects" />}>
             <ArrowLeftIcon />
           </Button>
           <h1 className="font-medium truncate min-w-0">{project.name}</h1>
@@ -247,7 +247,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
               projectId={project.id}
               shares={shares.map((s) => ({ id: s.id, url: shareUrl(s.token), createdAt: s.createdAt.toISOString(), views: s.views }))}
             />
-            <nav className="flex items-center gap-0.5" aria-label="Versiyonlar">
+            <nav className="flex items-center gap-0.5" aria-label="Versions">
               {project.versions.map((x) => (
                 <Button
                   key={x.id}
