@@ -55,8 +55,20 @@ model Version {
   createdAt  DateTime   @default(now())
   assets     Asset[]
   testSends  TestSend[]
+  checkRuns  CheckRun[]
 
   @@unique([projectId, number])
+}
+
+/// Result of an on-demand check pass (links, images, alt text) for a version.
+model CheckRun {
+  id        String   @id @default(cuid())
+  versionId String
+  version   Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  result    Json
+  createdAt DateTime @default(now())
+
+  @@index([versionId, createdAt])
 }
 
 /// An uploaded file (image etc.) stored in object storage.

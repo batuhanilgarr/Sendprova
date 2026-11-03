@@ -2,8 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "../../../lib/db";
-import { parseEmails, sendTest } from "../../../lib/mailer";
+import { runChecks } from "@/lib/checks";
+import { db } from "@/lib/db";
+import { parseEmails, sendTest } from "@/lib/mailer";
+
+export async function runChecksAction(form: FormData) {
+  const versionId = String(form.get("versionId"));
+  const projectId = String(form.get("projectId"));
+  await runChecks(versionId);
+  revalidatePath(`/p/${projectId}`);
+}
 
 export type SendState = { ok?: string; error?: string } | null;
 

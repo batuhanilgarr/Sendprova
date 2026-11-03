@@ -1,7 +1,10 @@
 "use client";
 
+import { FolderOpenIcon, UploadIcon, FileIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, type DragEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Collected {
   file: File;
@@ -98,27 +101,26 @@ export function DropZone() {
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
         className={[
-          "relative rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
-          over ? "border-accent bg-accent/5" : "border-border-strong bg-bg-elevated",
+          "relative rounded-2xl border-2 border-dashed px-6 py-10 sm:py-14 text-center transition-colors",
+          over ? "border-primary bg-primary/5" : "border-border bg-card",
         ].join(" ")}
       >
-        <div className="mx-auto mb-3 size-10 rounded-xl bg-bg-sunken border border-border grid place-items-center text-fg-muted">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 16V4m0 0 4 4m-4-4-4 4" />
-            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
+        <div className="mx-auto mb-4 size-11 rounded-xl bg-muted grid place-items-center text-muted-foreground">
+          <UploadIcon className="size-5" />
         </div>
         <p className="font-medium text-[15px]">HTML, MJML, görselleri veya tüm klasörü buraya bırak</p>
-        <p className="text-fg-muted mt-1">
+        <p className="text-muted-foreground mt-1 max-w-md mx-auto">
           Zip de olur. Görseller otomatik barındırılır, <code className="font-mono">src</code> yolları yeniden yazılır.
         </p>
-        <div className="mt-5 flex items-center justify-center gap-2">
-          <button type="button" onClick={() => fileInput.current?.click()} className="btn">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <Button variant="outline" onClick={() => fileInput.current?.click()}>
+            <FileIcon data-icon="inline-start" />
             Dosya seç
-          </button>
-          <button type="button" onClick={() => dirInput.current?.click()} className="btn">
+          </Button>
+          <Button variant="outline" onClick={() => dirInput.current?.click()}>
+            <FolderOpenIcon data-icon="inline-start" />
             Klasör seç
-          </button>
+          </Button>
         </div>
         <input ref={fileInput} type="file" multiple hidden onChange={(e) => onPick(e.target.files)} />
         <input
@@ -130,28 +132,28 @@ export function DropZone() {
           onChange={(e) => onPick(e.target.files)}
         />
         {busy && (
-          <div className="absolute inset-0 rounded-2xl bg-bg-elevated/80 backdrop-blur-sm grid place-items-center text-fg-muted">
+          <div className="absolute inset-0 rounded-2xl bg-card/80 backdrop-blur-sm grid place-items-center text-muted-foreground">
             {busy}
           </div>
         )}
       </div>
 
-      <details className="group rounded-xl border border-border bg-bg-elevated">
-        <summary className="cursor-pointer select-none px-4 py-2.5 text-fg-muted group-open:border-b group-open:border-border">
+      <details className="group rounded-xl border bg-card">
+        <summary className="cursor-pointer select-none px-4 py-2.5 text-muted-foreground group-open:border-b">
           veya kaynağı yapıştır
         </summary>
         <div className="p-3 flex flex-col gap-2">
-          <textarea
+          <Textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
             spellCheck={false}
             placeholder="<html>…</html> veya <mjml>…</mjml>"
-            className="font-mono text-xs h-40 w-full rounded-lg border border-border bg-bg-sunken p-3 outline-none focus:border-accent"
+            className="font-mono text-xs min-h-40"
           />
           <div className="flex justify-end">
-            <button type="button" disabled={!source.trim() || !!busy} onClick={() => submit([], source)} className="btn btn-primary">
+            <Button disabled={!source.trim() || !!busy} onClick={() => submit([], source)}>
               Önizle
-            </button>
+            </Button>
           </div>
         </div>
       </details>
