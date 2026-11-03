@@ -32,6 +32,18 @@ Images are written to `.data/assets` (or S3/R2 with `STORAGE_DRIVER=s3`) and eve
 | `src/lib/checks.ts` | Link / image reachability and alt-text checks |
 | `prisma/schema.prisma` | Workspace, Project, Version, Asset, SenderProfile, RecipientGroup, TestSend, CheckRun, ShareLink, CreditLedger, auth tables |
 
+## Image hosting (Cloudflare R2)
+
+Test emails reference images by absolute URL, so in production they must live on a public bucket. `.env.example` walks through creating an R2 bucket, enabling public access and a token. Then:
+
+```bash
+pnpm storage:check                              # uploads a 1x1 PNG and fetches it back
+STORAGE_DRIVER=s3 pnpm storage:migrate --dry    # preview moving existing local assets
+STORAGE_DRIVER=s3 pnpm storage:migrate          # copy them and rewrite stored URLs
+```
+
+Any S3-compatible bucket works the same way (`S3_ENDPOINT`, `S3_PUBLIC_URL`).
+
 ## Credits
 
 1 credit = 1 recipient in one test send. New accounts get 50. Credits are reserved in a transaction before sending and refunded for failed deliveries; every movement is a `CreditLedger` row. Admins top up from `/admin`.
