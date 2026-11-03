@@ -5,6 +5,20 @@ import { z } from "zod";
 import { runChecks } from "@/lib/checks";
 import { db } from "@/lib/db";
 import { parseEmails, sendTest } from "@/lib/mailer";
+import { newToken } from "@/lib/share";
+
+export async function createShareAction(form: FormData) {
+  const projectId = String(form.get("projectId"));
+  await db.shareLink.create({ data: { projectId, token: newToken() } });
+  revalidatePath(`/p/${projectId}`);
+}
+
+export async function revokeShareAction(form: FormData) {
+  const id = String(form.get("id"));
+  const projectId = String(form.get("projectId"));
+  await db.shareLink.update({ where: { id }, data: { revokedAt: new Date() } });
+  revalidatePath(`/p/${projectId}`);
+}
 
 export async function runChecksAction(form: FormData) {
   const versionId = String(form.get("versionId"));

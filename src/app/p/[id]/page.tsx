@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Preview } from "@/components/preview";
 import { SendPanel } from "@/components/send-panel";
+import { ShareDialog } from "@/components/share-dialog";
+import { shareUrl } from "@/lib/share";
 import { WorkbenchPanel } from "@/components/workbench-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
     }),
     db.checkRun.findFirst({ where: { versionId: version.id }, orderBy: { createdAt: "desc" } }),
   ]);
+  const shares = await db.shareLink.findMany({ where: { projectId: project.id, revokedAt: null }, orderBy: { createdAt: "desc" } });
   const checkRun = lastRun ? checkResultSchema.safeParse(lastRun.result) : null;
   const live: CheckResult | null = checkRun?.success ? checkRun.data : null;
 
@@ -238,6 +241,10 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
           </Badge>
           <div className="ml-auto flex items-center gap-2">
             <CountBadges counts={counts} />
+            <ShareDialog
+              projectId={project.id}
+              shares={shares.map((s) => ({ id: s.id, url: shareUrl(s.token), createdAt: s.createdAt.toISOString(), views: s.views }))}
+            />
             <nav className="flex items-center gap-0.5" aria-label="Versiyonlar">
               {project.versions.map((x) => (
                 <Button
