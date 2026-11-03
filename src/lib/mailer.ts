@@ -1,0 +1,137 @@
+import nodemailer, { type Transporter } from "nodemailer";
+import { z } from "zod";
+import { db, defaultWorkspace } from "./db";
+
+export const smtpConfigSchema = z.object({
+  host: z.string().min(1),
+  port: z.coerce.number().int().min(1).max(65535),
+  secure: z.coerce.boolean().default(false),
+  user: z.string().optional().default(""),
+  pass: z.string().optional().default(""),
+});
+export type SmtpConfig = z.infer<typeof smtpConfigSchema>;
+
+export function parseEmails(raw: string) {
+  return [
+    ...new Set(
+      raw
+        .split(/[\s,;]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+    ),
+  ];
+}
+
+/** Seed a default SMTP sender from .env (Mailpit in dev) if the workspace has none. */
+export async function ensureDefaultSender() {
+  const workspace = await defaultWorkspace();
+  const existing = await db.senderProfile.findFirst({ where: { workspaceId: workspace.id } });
+  if (existing) return existing;
+  const from = process.env.SMTP_FROM ?? "Sendprova <test@sendprova.local>";
+  const m = from.match(/^(.*?)\s*<([^>]+)>$/);
+  const config: SmtpConfig = {
+    host: process.env.SMTP_HOST ?? "localhost",
+    port: Number(process.env.SMTP_PORT ?? 1025),
+    secure: false,
+    user: process.env.SMTP_USER ?? "",
+    pass: process.env.SMTP_PASS ?? "",
+  };
+  return db.senderProfile.create({
+    data: {
+      workspaceId: workspace.id,
+      name: "Mailpit (yerel)",
+      fromName: m ? m[1].trim() : "Sendprova",
+      fromEmail: m ? m[2].trim() : from,
+      transport: "SMTP",
+      config,
+      isDefault: true,
+    },
+  });
+}
+
+function transportFor(transport: string, raw: unknown): Transporter {
+  if (transport !== "SMTP") throw new Error(`${transport} transport'u henüz desteklenmiyor`);
+  const c = smtpConfigSchema.parse(raw);
+  return nodemailer.createTransport({
+    host: c.host,
+    port: c.port,
+    secure: c.secure,
+    auth: c.user ? { user: c.user, pass: c.pass } : undefined,
+  });
+}
+
+/** Crude plain-text alternative so clients that prefer text/plain get something readable. */
+export function htmlToText(html: string) {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export async function verifySender(senderId: string) {
+  const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: senderId } });
+  await transportFor(sender.transport, sender.config).verify();
+}
+
+/**
+ * Create a TestSend with one Delivery per recipient and send them sequentially.
+ * Sequential keeps SMTP connections simple; a queue replaces this later.
+ */
+export async function sendTest(opts: { versionId: string; senderId: string; subject: string; emails: string[] }) {
+  const version = await db.version.findUniqueOrThrow({ where: { id: opts.versionId } });
+  const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: opts.senderId } });
+  const emails = [...new Set(opts.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (emails.length === 0) throw new Error("En az bir alıcı gerekli.");
+
+  const testSend = await db.testSend.create({
+    data: {
+      versionId: version.id,
+      senderId: sender.id,
+      subject: opts.subject,
+      status: "SENDING",
+      deliveries: { create: emails.map((email) => ({ email })) },
+    },
+    include: { deliveries: true },
+  });
+
+  const transport = transportFor(sender.transport, sender.config);
+  const text = htmlToText(version.html);
+  let failed = 0;
+
+  for (const d of testSend.deliveries) {
+    try {
+      const info = await transport.sendMail({
+        from: { name: sender.fromName, address: sender.fromEmail },
+        to: d.email,
+        subject: opts.subject,
+        html: version.html,
+        text,
+        headers: { "X-Sendprova-Version": `${version.id}` },
+      });
+      await db.delivery.update({
+        where: { id: d.id },
+        data: { status: "SENT", messageId: info.messageId, sentAt: new Date() },
+      });
+    } catch (err) {
+      failed++;
+      await db.delivery.update({
+        where: { id: d.id },
+        data: { status: "FAILED", error: err instanceof Error ? err.message : String(err) },
+      });
+    }
+  }
+  transport.close();
+
+  return db.testSend.update({
+    where: { id: testSend.id },
+    data: { status: failed === testSend.deliveries.length ? "FAILED" : "SENT" },
+    include: { deliveries: true },
+  });
+}

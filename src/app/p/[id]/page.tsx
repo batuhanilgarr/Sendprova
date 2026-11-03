@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Preview } from "../../../components/preview";
-import { db } from "../../../lib/db";
+import { SendPanel } from "../../../components/send-panel";
+import { db, defaultWorkspace } from "../../../lib/db";
+import { ensureDefaultSender } from "../../../lib/mailer";
 
 const GMAIL_CLIP_BYTES = 102 * 1024;
 
@@ -15,6 +18,7 @@ export default function ProjectPage({ params, searchParams }: PageProps<"/p/[id]
 }
 
 async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
+  await connection();
   const { id } = await params;
   const { v } = await searchParams;
   const project = await db.project.findUnique({
@@ -24,6 +28,19 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
   if (!project || project.versions.length === 0) notFound();
 
   const version = project.versions.find((x) => String(x.number) === v) ?? project.versions[0];
+
+  await ensureDefaultSender();
+  const workspace = await defaultWorkspace();
+  const [senders, groups, sends] = await Promise.all([
+    db.senderProfile.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: "asc" } }),
+    db.recipientGroup.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: "asc" }, include: { _count: { select: { recipients: true } } } }),
+    db.testSend.findMany({
+      where: { versionId: version.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: { deliveries: { orderBy: { email: "asc" } }, sender: { select: { name: true } } },
+    }),
+  ]);
   const kb = version.htmlBytes / 1024;
   const clip = version.htmlBytes > GMAIL_CLIP_BYTES;
 
@@ -128,8 +145,42 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
         </Section>
 
         <Section title="Test gönderimi">
-          <p className="text-fg-subtle">Gönderici profili ve alıcı grupları 4. haftada geliyor.</p>
+          <SendPanel
+            versionId={version.id}
+            projectId={project.id}
+            defaultSubject={version.subject ?? project.name}
+            senders={senders.map((s) => ({ id: s.id, name: s.name, fromEmail: s.fromEmail, isDefault: s.isDefault }))}
+            groups={groups.map((g) => ({ id: g.id, name: g.name, count: g._count.recipients }))}
+          />
+          <p className="text-fg-subtle mt-2">
+            Gönderici ve grupları <Link href="/settings" className="underline">Ayarlar</Link>&apos;dan yönet.
+          </p>
         </Section>
+
+        {sends.length > 0 && (
+          <Section title="Gönderim geçmişi">
+            <ul className="flex flex-col gap-3">
+              {sends.map((s) => (
+                <li key={s.id}>
+                  <div className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full ${s.status === "SENT" ? "bg-ok" : s.status === "FAILED" ? "bg-err" : "bg-warn"}`} />
+                    <span className="truncate flex-1">{s.subject}</span>
+                    <time className="text-fg-subtle text-xs" dateTime={s.createdAt.toISOString()}>
+                      {s.createdAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                    </time>
+                  </div>
+                  <ul className="mt-1 ml-4 flex flex-col gap-0.5 font-mono text-[11px]">
+                    {s.deliveries.map((d) => (
+                      <li key={d.id} className={d.status === "FAILED" ? "text-err" : "text-fg-muted"} title={d.error ?? d.messageId ?? ""}>
+                        {d.status === "SENT" ? "✓" : d.status === "FAILED" ? "✕" : "…"} {d.email}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
       </aside>
     </div>
   );

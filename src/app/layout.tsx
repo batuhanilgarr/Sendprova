@@ -21,6 +21,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             Sendprova
           </Link>
           <span className="text-fg-subtle text-xs">v0.1 · yerel</span>
+          <nav className="ml-auto flex items-center gap-1 text-fg-muted">
+            <Link href="/settings" className="px-2 py-1 rounded-md hover:bg-bg-sunken hover:text-fg">
+              Ayarlar
+            </Link>
+          </nav>
         </header>
         <main className="flex-1 flex flex-col min-h-0">{children}</main>
       </body>

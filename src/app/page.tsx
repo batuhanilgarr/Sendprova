@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { DropZone } from "../components/drop-zone";
 import { db } from "../lib/db";
@@ -22,6 +23,7 @@ export default function Home() {
 }
 
 async function ProjectList() {
+  await connection();
   const projects = await db.project.findMany({
     orderBy: { updatedAt: "desc" },
     take: 50,
