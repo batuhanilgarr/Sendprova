@@ -2,7 +2,7 @@
 
 import { CheckIcon, CopyIcon, Link2Icon } from "lucide-react";
 import { useState } from "react";
-import { createShareAction, revokeShareAction } from "@/app/p/[id]/actions";
+import { createShareAction, revokeShareAction } from "@/app/app/p/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";

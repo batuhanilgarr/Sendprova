@@ -1,4 +1,4 @@
-name: sendprova
+name: mailing
 
 services:
   postgres:

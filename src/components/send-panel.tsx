@@ -2,7 +2,7 @@
 
 import { SendIcon } from "lucide-react";
 import { useActionState } from "react";
-import { sendTestAction } from "@/app/p/[id]/actions";
+import { sendTestAction } from "@/app/app/p/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";

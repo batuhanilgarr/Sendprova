@@ -11,12 +11,3 @@ function createClient() {
 export const db = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
-
-/** Single default workspace until auth + multi-tenant lands. */
-export async function defaultWorkspace() {
-  return db.workspace.upsert({
-    where: { slug: "default" },
-    update: {},
-    create: { slug: "default", name: "Default" },
-  });
-}

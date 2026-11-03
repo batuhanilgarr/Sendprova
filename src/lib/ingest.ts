@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import path from "node:path/posix";
-import { db, defaultWorkspace } from "./db";
+import { db } from "./db";
 import { isMjml, compileMjml } from "./mjml";
 import { detectPlaceholders, normalizeRef, rewriteAssetRefs, type AssetUrlMap } from "./html/rewrite";
 import { mimeFor, putAsset } from "./storage";
@@ -18,6 +18,7 @@ export interface IngestInput {
   projectName?: string;
   /** Add a new version to an existing project instead of creating one. */
   projectId?: string;
+  workspaceId: string;
 }
 
 const SOURCE_EXT = new Set([".html", ".htm", ".mjml"]);
@@ -83,12 +84,11 @@ export async function ingest(input: IngestInput) {
     throw new Error("HTML veya MJML kaynağı bulunamadı. Bir .html/.mjml dosyası bırakın ya da kaynağı yapıştırın.");
   }
 
-  const workspace = await defaultWorkspace();
   const project = input.projectId
-    ? await db.project.findUniqueOrThrow({ where: { id: input.projectId } })
+    ? await db.project.findUniqueOrThrow({ where: { id: input.projectId, workspaceId: input.workspaceId } })
     : await db.project.create({
         data: {
-          workspaceId: workspace.id,
+          workspaceId: input.workspaceId,
           name: input.projectName?.trim() || titleFrom(source) || sourceFile?.path || "Adsız mailing",
         },
       });

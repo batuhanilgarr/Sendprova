@@ -6,25 +6,29 @@ import { runChecks } from "@/lib/checks";
 import { db } from "@/lib/db";
 import { parseEmails, sendTest } from "@/lib/mailer";
 import { newToken } from "@/lib/share";
+import { requireProjectAccess } from "@/lib/session";
 
 export async function createShareAction(form: FormData) {
   const projectId = String(form.get("projectId"));
+  await requireProjectAccess(projectId);
   await db.shareLink.create({ data: { projectId, token: newToken() } });
-  revalidatePath(`/p/${projectId}`);
+  revalidatePath(`/app/p/${projectId}`);
 }
 
 export async function revokeShareAction(form: FormData) {
   const id = String(form.get("id"));
   const projectId = String(form.get("projectId"));
-  await db.shareLink.update({ where: { id }, data: { revokedAt: new Date() } });
-  revalidatePath(`/p/${projectId}`);
+  await requireProjectAccess(projectId);
+  await db.shareLink.update({ where: { id, projectId }, data: { revokedAt: new Date() } });
+  revalidatePath(`/app/p/${projectId}`);
 }
 
 export async function runChecksAction(form: FormData) {
   const versionId = String(form.get("versionId"));
   const projectId = String(form.get("projectId"));
+  await requireProjectAccess(projectId);
   await runChecks(versionId);
-  revalidatePath(`/p/${projectId}`);
+  revalidatePath(`/app/p/${projectId}`);
 }
 
 export type SendState = { ok?: string; error?: string } | null;
@@ -49,6 +53,12 @@ export async function sendTestAction(_prev: SendState, form: FormData): Promise<
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { versionId, projectId, senderId, subject, groupIds, extra } = parsed.data;
+  let user;
+  try {
+    ({ user } = await requireProjectAccess(projectId));
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 
   const groups = groupIds.length
     ? await db.recipientGroup.findMany({ where: { id: { in: groupIds } }, include: { recipients: true } })
@@ -57,8 +67,8 @@ export async function sendTestAction(_prev: SendState, form: FormData): Promise<
   if (emails.length === 0) return { error: "Bir grup seçin veya e-posta girin." };
 
   try {
-    const result = await sendTest({ versionId, senderId, subject, emails });
-    revalidatePath(`/p/${projectId}`);
+    const result = await sendTest({ versionId, senderId, subject, emails, userId: user.id });
+    revalidatePath(`/app/p/${projectId}`);
     const sent = result.deliveries.filter((d) => d.status === "SENT").length;
     const failed = result.deliveries.length - sent;
     return failed ? { error: `${sent} gönderildi, ${failed} başarısız.` } : { ok: `${sent} alıcıya gönderildi.` };

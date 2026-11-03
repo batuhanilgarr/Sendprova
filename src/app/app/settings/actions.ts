@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db, defaultWorkspace } from "../../lib/db";
-import { parseEmails, smtpConfigSchema, verifySender } from "../../lib/mailer";
+import { db } from "@/lib/db";
+import { currentWorkspace } from "@/lib/session";
+import { parseEmails, smtpConfigSchema, verifySender } from "@/lib/mailer";
 
 export type ActionState = { ok?: string; error?: string } | null;
 
@@ -26,11 +27,11 @@ export async function saveSender(_prev: ActionState, form: FormData): Promise<Ac
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { id, name, fromName, fromEmail, ...smtp } = parsed.data;
-  const workspace = await defaultWorkspace();
+  const workspace = await currentWorkspace();
   const config = smtpConfigSchema.parse(smtp);
 
   if (id) {
-    const current = await db.senderProfile.findUniqueOrThrow({ where: { id } });
+    const current = await db.senderProfile.findUniqueOrThrow({ where: { id, workspaceId: workspace.id } });
     // Keep the stored password when the field is left blank.
     const prev = smtpConfigSchema.safeParse(current.config);
     if (!config.pass && prev.success) config.pass = prev.data.pass;
@@ -41,29 +42,32 @@ export async function saveSender(_prev: ActionState, form: FormData): Promise<Ac
       data: { workspaceId: workspace.id, name, fromName, fromEmail, transport: "SMTP", config, isDefault: count === 0 },
     });
   }
-  revalidatePath("/settings");
+  revalidatePath("/app/settings");
   return { ok: "Gönderici kaydedildi." };
 }
 
 export async function deleteSender(form: FormData) {
   const id = String(form.get("id"));
-  await db.senderProfile.delete({ where: { id } });
-  revalidatePath("/settings");
+  const workspace = await currentWorkspace();
+  await db.senderProfile.delete({ where: { id, workspaceId: workspace.id } });
+  revalidatePath("/app/settings");
 }
 
 export async function setDefaultSender(form: FormData) {
   const id = String(form.get("id"));
-  const workspace = await defaultWorkspace();
+  const workspace = await currentWorkspace();
   await db.$transaction([
     db.senderProfile.updateMany({ where: { workspaceId: workspace.id }, data: { isDefault: false } }),
-    db.senderProfile.update({ where: { id }, data: { isDefault: true } }),
+    db.senderProfile.update({ where: { id, workspaceId: workspace.id }, data: { isDefault: true } }),
   ]);
-  revalidatePath("/settings");
+  revalidatePath("/app/settings");
 }
 
 export async function testSenderConnection(_prev: ActionState, form: FormData): Promise<ActionState> {
   try {
-    await verifySender(String(form.get("id")));
+    const workspace = await currentWorkspace();
+    const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
+    await verifySender(sender.id);
     return { ok: "SMTP bağlantısı başarılı." };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
@@ -82,23 +86,24 @@ export async function saveGroup(_prev: ActionState, form: FormData): Promise<Act
   const { id, name } = parsed.data;
   const emails = parseEmails(parsed.data.emails);
   if (emails.length === 0) return { error: "En az bir geçerli e-posta girin." };
-  const workspace = await defaultWorkspace();
+  const workspace = await currentWorkspace();
 
   if (id) {
     await db.$transaction([
       db.recipient.deleteMany({ where: { groupId: id } }),
-      db.recipientGroup.update({ where: { id }, data: { name, recipients: { create: emails.map((email) => ({ email })) } } }),
+      db.recipientGroup.update({ where: { id, workspaceId: workspace.id }, data: { name, recipients: { create: emails.map((email) => ({ email })) } } }),
     ]);
   } else {
     await db.recipientGroup.create({
       data: { workspaceId: workspace.id, name, recipients: { create: emails.map((email) => ({ email })) } },
     });
   }
-  revalidatePath("/settings");
+  revalidatePath("/app/settings");
   return { ok: "Grup kaydedildi." };
 }
 
 export async function deleteGroup(form: FormData) {
-  await db.recipientGroup.delete({ where: { id: String(form.get("id")) } });
-  revalidatePath("/settings");
+  const workspace = await currentWorkspace();
+  await db.recipientGroup.delete({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
+  revalidatePath("/app/settings");
 }

@@ -1,62 +1,95 @@
+import { CheckCircle2Icon, LinkIcon, MonitorSmartphoneIcon, SendIcon, UploadCloudIcon } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { DropZone } from "@/components/drop-zone";
-import { Badge } from "@/components/ui/badge";
-import { db } from "@/lib/db";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { getSession } from "@/lib/session";
 
-export default function Home() {
+const FEATURES = [
+  { Icon: UploadCloudIcon, title: "Klasörü bırak, hazır", text: "HTML, MJML veya zip. Görseller otomatik barındırılır, yollar yeniden yazılır." },
+  { Icon: MonitorSmartphoneIcon, title: "Masaüstü, tablet, mobil", text: "Gerçek istemci davranışıyla ölçeklenmiş önizleme, açık ve koyu tema." },
+  { Icon: CheckCircle2Icon, title: "Göndermeden önce kontrol", text: "Gmail 102 KB sınırı, kırık link, yüklenmeyen görsel, eksik alt metni, Türkçe karakter." },
+  { Icon: SendIcon, title: "Kendi SMTP'nle test gönder", text: "Gmail, SES, Resend… Kayıtlı alıcı grupları, alıcı bazlı teslimat durumu." },
+  { Icon: LinkIcon, title: "Müşteriye tek link", text: "Giriş gerektirmeyen, iptal edilebilir salt okunur önizleme sayfası." },
+];
+
+export default function Landing() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 flex flex-col gap-10">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Yeni mailing</h1>
-        <p className="text-muted-foreground mt-1 mb-5">Bırak, önizle, kontrol et, gönder.</p>
-        <DropZone />
-      </section>
-      <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">Projeler</h2>
-        <Suspense fallback={<p className="text-muted-foreground">Yükleniyor…</p>}>
-          <ProjectList />
-        </Suspense>
-      </section>
-    </div>
+    <>
+      <header className="h-14 flex items-center px-4 sm:px-6 gap-3 max-w-6xl mx-auto w-full">
+        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-[15px]">
+          <span className="inline-grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold" aria-hidden>
+            S
+          </span>
+          Sendprova
+        </Link>
+        <nav className="ml-auto flex items-center gap-1">
+          <Suspense fallback={null}>
+            <AuthButtons />
+          </Suspense>
+          <ThemeToggle />
+        </nav>
+      </header>
+
+      <main className="flex-1">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-28 pb-16 text-center">
+          <p className="inline-block rounded-full border px-3 py-1 text-xs text-muted-foreground mb-6">PutsMail kapandı. Daha iyisi burada.</p>
+          <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] max-w-3xl mx-auto">
+            Mailing&apos;i göndermeden önce <span className="text-primary">prova et.</span>
+          </h1>
+          <p className="text-muted-foreground text-base sm:text-lg mt-5 max-w-xl mx-auto">
+            HTML veya MJML mailing&apos;ini bırak; her cihazda önizle, kontrolleri geç, kendi SMTP&apos;nle gerçek gelen kutusuna test gönder.
+          </p>
+          <div className="mt-8 flex items-center justify-center gap-2">
+            <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+              Ücretsiz başla
+            </Button>
+            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/login" />}>
+              Giriş yap
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-xs mt-3">Kayıtta 50 kredi hediye. 1 kredi = 1 alıcıya 1 test gönderimi.</p>
+        </section>
+
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map(({ Icon, title, text }) => (
+              <li key={title} className="rounded-2xl border bg-card p-5">
+                <div className="size-9 rounded-lg bg-muted grid place-items-center text-foreground mb-3">
+                  <Icon className="size-4" />
+                </div>
+                <h2 className="font-medium text-[15px]">{title}</h2>
+                <p className="text-muted-foreground mt-1">{text}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+
+      <footer className="border-t py-6 text-center text-muted-foreground text-xs">Sendprova · mailing test ve önizleme</footer>
+    </>
   );
 }
 
-async function ProjectList() {
+async function AuthButtons() {
   await connection();
-  const projects = await db.project.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: 50,
-    include: {
-      versions: { orderBy: { number: "desc" }, take: 1, select: { number: true, htmlBytes: true, createdAt: true, sourceKind: true } },
-    },
-  });
-  if (projects.length === 0) return <p className="text-muted-foreground">Henüz proje yok.</p>;
+  const session = await getSession();
+  if (session) {
+    return (
+      <Button size="sm" nativeButton={false} render={<Link href="/app" />}>
+        Uygulamaya git
+      </Button>
+    );
+  }
   return (
-    <ul className="divide-y rounded-xl border bg-card overflow-hidden">
-      {projects.map((p) => {
-        const v = p.versions[0];
-        return (
-          <li key={p.id}>
-            <Link href={`/p/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/60 transition-colors">
-              <span className="flex-1 min-w-0 truncate font-medium">{p.name}</span>
-              {v && (
-                <>
-                  <Badge variant="secondary" className="hidden sm:inline-flex font-mono">
-                    {v.sourceKind}
-                  </Badge>
-                  <span className="text-muted-foreground font-mono text-xs">v{v.number}</span>
-                  <span className="hidden sm:inline text-muted-foreground font-mono text-xs">{(v.htmlBytes / 1024).toFixed(1)} KB</span>
-                  <time className="text-muted-foreground text-xs" dateTime={v.createdAt.toISOString()}>
-                    {v.createdAt.toLocaleDateString("tr-TR")}
-                  </time>
-                </>
-              )}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/login" />}>
+        Giriş
+      </Button>
+      <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
+        Kayıt ol
+      </Button>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { z } from "zod";
-import { db, defaultWorkspace } from "./db";
+import { db } from "./db";
 
 export const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -23,9 +23,8 @@ export function parseEmails(raw: string) {
 }
 
 /** Seed a default SMTP sender from .env (Mailpit in dev) if the workspace has none. */
-export async function ensureDefaultSender() {
-  const workspace = await defaultWorkspace();
-  const existing = await db.senderProfile.findFirst({ where: { workspaceId: workspace.id } });
+export async function ensureDefaultSender(workspaceId: string) {
+  const existing = await db.senderProfile.findFirst({ where: { workspaceId } });
   if (existing) return existing;
   const from = process.env.SMTP_FROM ?? "Sendprova <test@sendprova.local>";
   const m = from.match(/^(.*?)\s*<([^>]+)>$/);
@@ -38,7 +37,7 @@ export async function ensureDefaultSender() {
   };
   return db.senderProfile.create({
     data: {
-      workspaceId: workspace.id,
+      workspaceId,
       name: "Mailpit (yerel)",
       fromName: m ? m[1].trim() : "Sendprova",
       fromEmail: m ? m[2].trim() : from,
@@ -84,21 +83,35 @@ export async function verifySender(senderId: string) {
  * Create a TestSend with one Delivery per recipient and send them sequentially.
  * Sequential keeps SMTP connections simple; a queue replaces this later.
  */
-export async function sendTest(opts: { versionId: string; senderId: string; subject: string; emails: string[] }) {
-  const version = await db.version.findUniqueOrThrow({ where: { id: opts.versionId } });
-  const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: opts.senderId } });
+export async function sendTest(opts: { versionId: string; senderId: string; subject: string; emails: string[]; userId: string }) {
+  const version = await db.version.findUniqueOrThrow({ where: { id: opts.versionId }, include: { project: true } });
+  const workspaceId = version.project.workspaceId;
+  const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: opts.senderId, workspaceId } });
   const emails = [...new Set(opts.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
   if (emails.length === 0) throw new Error("En az bir alıcı gerekli.");
 
-  const testSend = await db.testSend.create({
-    data: {
-      versionId: version.id,
-      senderId: sender.id,
-      subject: opts.subject,
-      status: "SENDING",
-      deliveries: { create: emails.map((email) => ({ email })) },
-    },
-    include: { deliveries: true },
+  // 1 credit per recipient, reserved up front inside a transaction so two
+  // concurrent sends cannot overspend. Failed deliveries are refunded below.
+  const testSend = await db.$transaction(async (tx) => {
+    const ws = await tx.workspace.findUniqueOrThrow({ where: { id: workspaceId } });
+    if (ws.credits < emails.length) {
+      throw new Error(`Yetersiz kredi: ${emails.length} gerekli, ${ws.credits} var.`);
+    }
+    const created = await tx.testSend.create({
+      data: {
+        versionId: version.id,
+        senderId: sender.id,
+        subject: opts.subject,
+        status: "SENDING",
+        deliveries: { create: emails.map((email) => ({ email })) },
+      },
+      include: { deliveries: true },
+    });
+    await tx.workspace.update({ where: { id: workspaceId }, data: { credits: { decrement: emails.length } } });
+    await tx.creditLedger.create({
+      data: { workspaceId, delta: -emails.length, reason: `Test gönderimi: ${opts.subject}`, testSendId: created.id, byUserId: opts.userId },
+    });
+    return created;
   });
 
   const transport = transportFor(sender.transport, sender.config);
@@ -128,6 +141,13 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
     }
   }
   transport.close();
+
+  if (failed > 0) {
+    await db.$transaction([
+      db.workspace.update({ where: { id: workspaceId }, data: { credits: { increment: failed } } }),
+      db.creditLedger.create({ data: { workspaceId, delta: failed, reason: "Başarısız teslimat iadesi", testSendId: testSend.id } }),
+    ]);
+  }
 
   return db.testSend.update({
     where: { id: testSend.id },

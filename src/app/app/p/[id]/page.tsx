@@ -11,7 +11,8 @@ import { WorkbenchPanel } from "@/components/workbench-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { checkResultSchema, type CheckResult } from "@/lib/checks";
-import { db, defaultWorkspace } from "@/lib/db";
+import { db } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { ensureDefaultSender } from "@/lib/mailer";
 import { runChecksAction } from "./actions";
 
@@ -20,7 +21,7 @@ const GMAIL_CLIP_BYTES = 102 * 1024;
 type Tone = "ok" | "warn" | "err";
 type Check = { tone: Tone; text: string };
 
-export default function ProjectPage({ params, searchParams }: PageProps<"/p/[id]">) {
+export default function ProjectPage({ params, searchParams }: PageProps<"/app/p/[id]">) {
   return (
     <Suspense fallback={<div className="p-6 text-muted-foreground">Yükleniyor…</div>}>
       <Workbench params={params} searchParams={searchParams} />
@@ -28,20 +29,21 @@ export default function ProjectPage({ params, searchParams }: PageProps<"/p/[id]
   );
 }
 
-async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
+async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
   await connection();
+  const user = await requireUser();
   const { id } = await params;
   const { v } = await searchParams;
   const project = await db.project.findUnique({
-    where: { id },
+    where: { id, ...(user.role === "admin" ? {} : { workspace: { ownerId: user.id } }) },
     include: { versions: { orderBy: { number: "desc" }, include: { assets: { orderBy: { path: "asc" } } } } },
   });
   if (!project || project.versions.length === 0) notFound();
 
   const version = project.versions.find((x) => String(x.number) === v) ?? project.versions[0];
 
-  await ensureDefaultSender();
-  const workspace = await defaultWorkspace();
+  const workspace = await db.workspace.findUniqueOrThrow({ where: { id: project.workspaceId } });
+  await ensureDefaultSender(workspace.id);
   const [senders, groups, sends, lastRun] = await Promise.all([
     db.senderProfile.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: "asc" } }),
     db.recipientGroup.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: "asc" }, include: { _count: { select: { recipients: true } } } }),
@@ -194,7 +196,7 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
         />
         <p className="text-muted-foreground mt-2">
           Gönderici ve grupları{" "}
-          <Link href="/settings" className="underline underline-offset-2">
+          <Link href="/app/settings" className="underline underline-offset-2">
             Ayarlar
           </Link>
           &apos;dan yönet.
@@ -232,7 +234,7 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
     <div className="flex-1 flex min-h-0">
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="min-h-11 shrink-0 border-b bg-background flex items-center gap-2 px-3 sm:px-4 py-1.5">
-          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href="/" aria-label="Projelere dön" />}>
+          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href="/app" aria-label="Projelere dön" />}>
             <ArrowLeftIcon />
           </Button>
           <h1 className="font-medium truncate min-w-0">{project.name}</h1>
@@ -253,7 +255,7 @@ async function Workbench({ params, searchParams }: PageProps<"/p/[id]">) {
                   size="xs"
                   className="font-mono"
                   nativeButton={false}
-                  render={<Link href={`/p/${project.id}?v=${x.number}`} aria-current={x.id === version.id ? "page" : undefined} />}
+                  render={<Link href={`/app/p/${project.id}?v=${x.number}`} aria-current={x.id === version.id ? "page" : undefined} />}
                 >
                   v{x.number}
                 </Button>

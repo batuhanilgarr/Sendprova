@@ -7,15 +7,103 @@ datasource db {
   provider = "postgresql"
 }
 
-/// A workspace groups projects per brand / client. Single default workspace for now.
+/// A workspace belongs to one user and holds their projects, senders, groups and credits.
 model Workspace {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
+  ownerId   String?   @unique
+  owner     User?     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Cached balance; every change also writes a CreditLedger row.
+  credits   Int       @default(0)
   createdAt DateTime  @default(now())
   projects  Project[]
   senders   SenderProfile[]
   groups    RecipientGroup[]
+  ledger    CreditLedger[]
+}
+
+/// 1 credit = 1 recipient in one test send. Positive = top-up, negative = usage.
+model CreditLedger {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  delta       Int
+  reason      String
+  testSendId  String?
+  byUserId    String?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+// ---- Better Auth ----------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          String?
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  sessions      Session[]
+  accounts      Account[]
+  workspace     Workspace?
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }
 
 /// A mailing. Each save creates a new Version.

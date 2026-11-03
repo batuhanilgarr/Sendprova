@@ -65,7 +65,7 @@ export function DropZone() {
         const res = await fetch("/api/ingest", { method: "POST", body: form });
         const data = (await res.json()) as { projectId?: string; error?: string };
         if (!res.ok || !data.projectId) throw new Error(data.error ?? "Yükleme başarısız");
-        router.push(`/p/${data.projectId}`);
+        router.push(`/app/p/${data.projectId}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setBusy(null);

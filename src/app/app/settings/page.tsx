@@ -2,7 +2,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { db, defaultWorkspace } from "@/lib/db";
+import { db } from "@/lib/db";
+import { currentWorkspace } from "@/lib/session";
 import { ensureDefaultSender, smtpConfigSchema } from "@/lib/mailer";
 import { deleteGroup, deleteSender, setDefaultSender } from "./actions";
 import { GroupForm, SenderForm, TestConnectionButton } from "./forms";
@@ -34,8 +35,8 @@ function SectionHeader({ title, description }: { title: string; description: str
 
 async function Senders() {
   await connection();
-  await ensureDefaultSender();
-  const workspace = await defaultWorkspace();
+  const workspace = await currentWorkspace();
+  await ensureDefaultSender(workspace.id);
   const senders = await db.senderProfile.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: "asc" } });
 
   return (
@@ -101,7 +102,7 @@ async function Senders() {
 
 async function Groups() {
   await connection();
-  const workspace = await defaultWorkspace();
+  const workspace = await currentWorkspace();
   const groups = await db.recipientGroup.findMany({
     where: { workspaceId: workspace.id },
     orderBy: { createdAt: "asc" },
