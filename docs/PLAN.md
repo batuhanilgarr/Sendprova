@@ -1,4 +1,4 @@
-# Mailing Test & Preview Platformu — Araştırma ve Plan
+# Sendprova — Mailing Test & Preview Platformu — Araştırma ve Plan
 
 Tarih: 3 Kasım 2026
 Amaç: PutsMail'in kapanmasıyla boşalan "HTML mailing'i gönder, önizle, kontrol et" ihtiyacını, piyasadaki araçlardan daha iyi bir kendi sistemimizle karşılamak. Sistem kadar tasarım da birinci sınıf olacak.

@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A workspace groups projects per brand / client. Single default workspace for now.
+model Workspace {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  projects  Project[]
+  senders   SenderProfile[]
+  groups    RecipientGroup[]
+}
+
+/// A mailing. Each save creates a new Version.
+model Project {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  versions    Version[]
+
+  @@index([workspaceId, updatedAt])
+}
+
+enum SourceKind {
+  HTML
+  MJML
+}
+
+model Version {
+  id         String     @id @default(cuid())
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number     Int
+  sourceKind SourceKind @default(HTML)
+  /// Original source as uploaded (HTML or MJML), with relative asset paths intact.
+  source     String
+  /// Compiled + asset-rewritten HTML that is actually previewed and sent.
+  html       String
+  subject    String?
+  /// Detected ESP placeholders such as {unsubscribelink} or *|FNAME|*.
+  placeholders String[]
+  /// Relative asset references that could not be matched to an uploaded file.
+  missingAssets String[]
+  htmlBytes  Int
+  createdAt  DateTime   @default(now())
+  assets     Asset[]
+  testSends  TestSend[]
+
+  @@unique([projectId, number])
+}
+
+/// An uploaded file (image etc.) stored in object storage.
+model Asset {
+  id        String   @id @default(cuid())
+  versionId String
+  version   Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  /// Path relative to the uploaded HTML file, e.g. "images/index_01.png".
+  path      String
+  key       String
+  url       String
+  mime      String
+  bytes     Int
+  createdAt DateTime @default(now())
+
+  @@index([versionId])
+}
+
+enum Transport {
+  SMTP
+  SES
+  RESEND
+}
+
+model SenderProfile {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  fromName    String
+  fromEmail   String
+  transport   Transport @default(SMTP)
+  /// Transport config (host, port, user, pass / keys). Encrypted at rest later.
+  config      Json
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  testSends   TestSend[]
+}
+
+model RecipientGroup {
+  id          String      @id @default(cuid())
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  recipients  Recipient[]
+  createdAt   DateTime    @default(now())
+}
+
+model Recipient {
+  id      String         @id @default(cuid())
+  groupId String
+  group   RecipientGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  email   String
+  name    String?
+}
+
+enum SendStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+}
+
+model TestSend {
+  id         String        @id @default(cuid())
+  versionId  String
+  version    Version       @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  senderId   String?
+  sender     SenderProfile? @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  subject    String
+  status     SendStatus    @default(QUEUED)
+  createdAt  DateTime      @default(now())
+  deliveries Delivery[]
+}
+
+model Delivery {
+  id         String     @id @default(cuid())
+  testSendId String
+  testSend   TestSend   @relation(fields: [testSendId], references: [id], onDelete: Cascade)
+  email      String
+  status     SendStatus @default(QUEUED)
+  messageId  String?
+  error      String?
+  sentAt     DateTime?
+}

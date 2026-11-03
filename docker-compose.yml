@@ -1,0 +1,43 @@
+name: sendprova
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mailing
+      POSTGRES_PASSWORD: mailing
+      POSTGRES_DB: mailing
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data
+
+  # Sandbox inbox: catches test sends without delivering them anywhere.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"   # web UI
+      - "1025:1025"   # SMTP
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+# Asset storage: STORAGE_DRIVER=local writes to ./.data/assets and serves them
+# from the app itself. Use STORAGE_DRIVER=s3 with R2/S3 in production.
+
+volumes:
+  postgres:
+  redis:

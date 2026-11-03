@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sendprova
 
-## Getting Started
+HTML / MJML mailing'leri önizle, kontrol et, test gönder. PutsMail'in yerine, self-host.
+Plan ve araştırma: [docs/PLAN.md](docs/PLAN.md).
 
-First, run the development server:
+## Kurulum
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env
+docker compose up -d        # Postgres :5433, Redis :6379, Mailpit :8025 (UI) / :1025 (SMTP)
+pnpm prisma migrate dev
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 açılır. Bir `.html`/`.mjml` dosyası, görselleriyle birlikte bir klasör
+ya da zip bırak; görseller `.data/assets` altına yazılır, `src` yolları otomatik mutlak URL'ye çevrilir.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Yapı
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Yol | Ne |
+|---|---|
+| `src/lib/ingest.ts` | Zip açma, kaynak seçme, asset yükleme, MJML derleme, URL rewrite, versiyon kaydı |
+| `src/lib/html/rewrite.ts` | Relative `src` / `background` / `url()` → barındırılan URL; placeholder tespiti |
+| `src/lib/storage.ts` | `local` (disk) veya `s3` (R2/S3) depolama sürücüsü |
+| `src/app/api/ingest` | Yükleme endpoint'i (multipart) |
+| `src/app/p/[id]` | Çalışma ekranı: cihaz çerçeveli önizleme + kontroller |
+| `prisma/schema.prisma` | Workspace, Project, Version, Asset, SenderProfile, RecipientGroup, TestSend |
 
-## Learn More
+## Sırada
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Hafta 4 hedefi: gönderici profili (SMTP/SES/Resend), alıcı grupları, kuyruklu test gönderimi.
