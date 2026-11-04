@@ -37,3 +37,15 @@ export async function requireProjectAccess(projectId: string) {
   if (user.role !== "admin" && project.workspace.ownerId !== user.id) throw new Error("You do not have access to this project");
   return { user, project };
 }
+
+/** Route-handler guard: the version must belong to the signed-in user's workspace (admins see all). */
+export async function requireVersionAccess(versionId: string): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const session = await getSession();
+  if (!session) return { ok: false, response: new Response("Unauthorized", { status: 401 }) };
+  const version = await db.version.findUnique({
+    where: { id: versionId, ...(session.user.role === "admin" ? {} : { project: { workspace: { ownerId: session.user.id } } }) },
+    select: { id: true },
+  });
+  if (!version) return { ok: false, response: new Response("Not found", { status: 404 }) };
+  return { ok: true };
+}

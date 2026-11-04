@@ -34,6 +34,8 @@ Images are written to `.data/assets` (or S3/R2 with `STORAGE_DRIVER=s3`) and eve
 | `src/lib/brand-checks.ts`, `src/lib/score.ts` | Brand kit, legal and UTM checks; 0–100 send-ready score |
 | `src/lib/snapshots.ts`, `src/lib/diff.ts` | Playwright snapshots, pixel diff and text diff between versions |
 | `src/lib/review.ts` | Pinned comments and approval decisions behind share tokens |
+| `src/lib/export.ts`, `src/lib/preflight-pdf.ts` | ESP export (placeholder mapping, CSS inlining), PDF report, delivery pack |
+| `src/app/c/[token]` | Client portal (all projects of one client, agency-branded) |
 | `prisma/schema.prisma` | Workspace, Project, Version, Asset, SenderProfile, RecipientGroup, TestSend, CheckRun, ShareLink, CreditLedger, auth tables |
 
 ## Image hosting (Cloudflare R2)

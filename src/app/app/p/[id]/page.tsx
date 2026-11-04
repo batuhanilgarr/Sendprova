@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/review-workbench";
 import { toThreads } from "@/lib/threads";
 import { SendPanel } from "@/components/send-panel";
 import { ShareDialog } from "@/components/share-dialog";
+import { ExportDialog } from "@/components/export-dialog";
 import { shareUrl } from "@/lib/share";
 import { WorkbenchPanel } from "@/components/workbench-panel";
 import { Badge } from "@/components/ui/badge";
@@ -319,6 +320,7 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
               {deadline && <span className={`text-${deadline.tone}`}>{deadline.label}</span>}
             </span>
             <CountBadges counts={counts} />
+            <ExportDialog versionId={version.id} />
             <ShareDialog
               projectId={project.id}
               shares={shares.map((s) => ({ id: s.id, url: shareUrl(s.token), createdAt: s.createdAt.toISOString(), views: s.views }))}

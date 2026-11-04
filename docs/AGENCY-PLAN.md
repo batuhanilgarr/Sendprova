@@ -42,6 +42,8 @@ Hedef: Ajansların (ve kurum içi e-posta ekiplerinin) mailing üretim, onay ve 
 
 ## 3. Özellikler, sprint sırasıyla
 
+> Durum (4 Kasım 2026): Sprint 1–6 tamamlandı ve main dalında. Kalanlar "Sonrası" bölümünde.
+
 Her sprint tek başına değer üretir ve bir önceki üstüne biner. Tahminler tek geliştirici için.
 
 ### Sprint 1 — Onay ve yorum (1 hafta)  ← buradan başlıyoruz
