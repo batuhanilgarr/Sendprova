@@ -1,0 +1,39 @@
+# Self-hosted production: app + Postgres on one machine.
+#   cp .env.production.example .env.production   # fill it in
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Put a TLS reverse proxy (Caddy, Traefik, nginx) in front of port 3000.
+name: sendprova
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://sendprova:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/sendprova?schema=public
+    ports:
+      - "3000:3000"
+    volumes:
+      - assets:/app/.data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sendprova
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: sendprova
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sendprova"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres:
+  assets:
