@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { z } from "zod";
 import { db } from "./db";
+import { injectPixel } from "./opens";
 
 export const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -11,15 +12,38 @@ export const smtpConfigSchema = z.object({
 });
 export type SmtpConfig = z.infer<typeof smtpConfigSchema>;
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 export function parseEmails(raw: string) {
   return [
     ...new Set(
       raw
         .split(/[\s,;]+/)
         .map((e) => e.trim().toLowerCase())
-        .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+        .filter((e) => EMAIL_RE.test(e)),
     ),
   ];
+}
+
+export interface LabelledEmail {
+  email: string;
+  label?: string | null;
+}
+
+/**
+ * One recipient per line. A label after "|" or a tab marks the seed device:
+ *   outlook@team.com | Outlook 365 Win
+ *   iphone@team.com  | iPhone Mail
+ * Lines without a label fall back to comma/space separated plain emails.
+ */
+export function parseLabelledEmails(raw: string): LabelledEmail[] {
+  const out = new Map<string, string | null>();
+  for (const line of raw.split(/\r?\n/)) {
+    const [left, ...rest] = line.split(/\s*[|\t]\s*/);
+    const label = rest.join(" ").trim() || null;
+    for (const email of parseEmails(left ?? "")) if (!out.has(email) || label) out.set(email, label);
+  }
+  return [...out.entries()].map(([email, label]) => ({ email, label }));
 }
 
 /** Seed a default SMTP sender from .env (Mailpit in dev) if the workspace has none. */
@@ -94,11 +118,18 @@ export async function sendPlain(senderId: string, to: string, subject: string, t
  * Create a TestSend with one Delivery per recipient and send them sequentially.
  * Sequential keeps SMTP connections simple; a queue replaces this later.
  */
-export async function sendTest(opts: { versionId: string; senderId: string; subject: string; emails: string[]; userId: string }) {
+export async function sendTest(opts: { versionId: string; senderId: string; subject: string; emails: (string | LabelledEmail)[]; userId: string }) {
   const version = await db.version.findUniqueOrThrow({ where: { id: opts.versionId }, include: { project: true } });
   const workspaceId = version.project.workspaceId;
   const sender = await db.senderProfile.findUniqueOrThrow({ where: { id: opts.senderId, workspaceId } });
-  const emails = [...new Set(opts.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const byEmail = new Map<string, string | null>();
+  for (const r of opts.emails) {
+    const email = (typeof r === "string" ? r : r.email).trim().toLowerCase();
+    if (!email) continue;
+    const label = typeof r === "string" ? null : (r.label ?? null);
+    if (!byEmail.has(email) || label) byEmail.set(email, label);
+  }
+  const emails = [...byEmail.keys()];
   if (emails.length === 0) throw new Error("At least one recipient is required.");
 
   // 1 credit per recipient, reserved up front inside a transaction so two
@@ -114,7 +145,7 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
         senderId: sender.id,
         subject: opts.subject,
         status: "SENDING",
-        deliveries: { create: emails.map((email) => ({ email })) },
+        deliveries: { create: emails.map((email) => ({ email, label: byEmail.get(email) ?? null })) },
       },
       include: { deliveries: true },
     });
@@ -135,7 +166,7 @@ export async function sendTest(opts: { versionId: string; senderId: string; subj
         from: { name: sender.fromName, address: sender.fromEmail },
         to: d.email,
         subject: opts.subject,
-        html: version.html,
+        html: injectPixel(version.html, d.id),
         text,
         headers: { "X-Sendprova-Version": `${version.id}` },
       });

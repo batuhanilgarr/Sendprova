@@ -92,8 +92,15 @@ export function GroupForm({ initial }: { initial?: { id: string; name: string; e
       <Field label="Group name">
         <Input name="name" defaultValue={initial?.name} placeholder="Team" required />
       </Field>
-      <Field label="Email addresses" hint="(separate with newlines, commas or spaces)">
-        <Textarea name="emails" defaultValue={initial?.emails} rows={4} className="font-mono text-xs" required />
+      <Field label="Email addresses" hint="(one per line; add “| label” to mark the device it is opened in)">
+        <Textarea
+          name="emails"
+          defaultValue={initial?.emails}
+          rows={5}
+          className="font-mono text-xs"
+          placeholder={"outlook@team.com | Outlook 365 Win\niphone@team.com | iPhone Mail\ngmail@team.com | Gmail Android"}
+          required
+        />
       </Field>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>

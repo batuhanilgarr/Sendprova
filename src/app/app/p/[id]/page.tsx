@@ -243,11 +243,23 @@ async function Workbench({ params, searchParams }: PageProps<"/app/p/[id]">) {
                 </div>
                 <ul className="mt-1 ml-4 flex flex-col gap-0.5 font-mono text-[11px]">
                   {s.deliveries.map((d) => (
-                    <li key={d.id} className={d.status === "FAILED" ? "text-err" : "text-muted-foreground"} title={d.error ?? d.messageId ?? ""}>
-                      {d.status === "SENT" ? "✓" : d.status === "FAILED" ? "✕" : "…"} {d.email}
+                    <li key={d.id} className={`flex items-center gap-2 ${d.status === "FAILED" ? "text-err" : "text-muted-foreground"}`} title={d.error ?? d.openUserAgent ?? d.messageId ?? ""}>
+                      <span>{d.status === "SENT" ? "✓" : d.status === "FAILED" ? "✕" : "…"}</span>
+                      <span className="truncate">{d.email}</span>
+                      {d.label && <span className="rounded bg-muted px-1 text-[10px] text-foreground/80">{d.label}</span>}
+                      {d.status === "SENT" && (
+                        <span className={`ml-auto whitespace-nowrap ${d.openedAt ? "text-ok" : "text-muted-foreground/70"}`}>
+                          {d.openedAt ? `opened · ${d.openClient ?? "?"}${d.openCount > 1 ? ` ×${d.openCount}` : ""}` : "not opened"}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
+                {s.deliveries.some((d) => d.status === "SENT") && (
+                  <p className="mt-1 ml-4 text-[11px] text-muted-foreground">
+                    {s.deliveries.filter((d) => d.openedAt).length}/{s.deliveries.filter((d) => d.status === "SENT").length} opened
+                  </p>
+                )}
               </li>
             ))}
           </ul>

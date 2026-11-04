@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { currentWorkspace } from "@/lib/session";
-import { parseEmails, smtpConfigSchema, verifySender } from "@/lib/mailer";
+import { parseLabelledEmails, smtpConfigSchema, verifySender } from "@/lib/mailer";
 import { newToken } from "@/lib/share";
 
 export type ActionState = { ok?: string; error?: string } | null;
@@ -85,18 +85,18 @@ export async function saveGroup(_prev: ActionState, form: FormData): Promise<Act
   const parsed = groupSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { id, name } = parsed.data;
-  const emails = parseEmails(parsed.data.emails);
+  const emails = parseLabelledEmails(parsed.data.emails);
   if (emails.length === 0) return { error: "Enter at least one valid email address." };
   const workspace = await currentWorkspace();
 
   if (id) {
     await db.$transaction([
       db.recipient.deleteMany({ where: { groupId: id } }),
-      db.recipientGroup.update({ where: { id, workspaceId: workspace.id }, data: { name, recipients: { create: emails.map((email) => ({ email })) } } }),
+      db.recipientGroup.update({ where: { id, workspaceId: workspace.id }, data: { name, recipients: { create: emails.map((r) => ({ email: r.email, label: r.label })) } } }),
     ]);
   } else {
     await db.recipientGroup.create({
-      data: { workspaceId: workspace.id, name, recipients: { create: emails.map((email) => ({ email })) } },
+      data: { workspaceId: workspace.id, name, recipients: { create: emails.map((r) => ({ email: r.email, label: r.label })) } },
     });
   }
   revalidatePath("/app/settings");

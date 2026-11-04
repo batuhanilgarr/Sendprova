@@ -68,7 +68,7 @@ export async function sendTestAction(_prev: SendState, form: FormData): Promise<
   const groups = groupIds.length
     ? await db.recipientGroup.findMany({ where: { id: { in: groupIds } }, include: { recipients: true } })
     : [];
-  const emails = [...groups.flatMap((g) => g.recipients.map((r) => r.email)), ...parseEmails(extra)];
+  const emails = [...groups.flatMap((g) => g.recipients.map((r) => ({ email: r.email, label: r.label }))), ...parseEmails(extra)];
   if (emails.length === 0) return { error: "Select a group or enter an email address." };
 
   try {

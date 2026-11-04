@@ -126,6 +126,7 @@ async function Groups() {
             <div className="flex items-center gap-3 px-4 py-3 border-b">
               <span className="font-medium">{g.name}</span>
               <Badge variant="secondary">{g.recipients.length} recipient{g.recipients.length === 1 ? "" : "s"}</Badge>
+              {g.recipients.some((r) => r.label) && <Badge variant="outline">seed list · {g.recipients.filter((r) => r.label).length} labelled</Badge>}
               <form action={deleteGroup} className="ml-auto">
                 <input type="hidden" name="id" value={g.id} />
                 <Button type="submit" variant="destructive" size="sm">
@@ -136,7 +137,7 @@ async function Groups() {
             <details>
               <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
               <div className="px-4 pb-4">
-                <GroupForm initial={{ id: g.id, name: g.name, emails: g.recipients.map((r) => r.email).join("\n") }} />
+                <GroupForm initial={{ id: g.id, name: g.name, emails: g.recipients.map((r) => (r.label ? `${r.email} | ${r.label}` : r.email)).join("\n") }} />
               </div>
             </details>
           </li>

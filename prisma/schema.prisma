@@ -347,6 +347,8 @@ model Recipient {
   group   RecipientGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   email   String
   name    String?
+  /// Device / client this seed inbox is opened in, e.g. "Outlook 365 Win", "iPhone Mail".
+  label   String?
 }
 
 enum SendStatus {
@@ -377,4 +379,10 @@ model Delivery {
   messageId  String?
   error      String?
   sentAt     DateTime?
+  /// Seed label copied from the recipient at send time.
+  label      String?
+  openedAt   DateTime?
+  openCount  Int        @default(0)
+  openClient String?
+  openUserAgent String?
 }
