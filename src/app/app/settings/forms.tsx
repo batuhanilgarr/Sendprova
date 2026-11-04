@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { saveClient, saveGroup, saveSender, testSenderConnection, type ActionState } from "./actions";
+import { saveBranding, saveClient, saveGroup, saveSender, testSenderConnection, type ActionState } from "./actions";
 
 function Status({ state }: { state: ActionState }) {
   if (!state) return null;
@@ -162,6 +162,33 @@ export function ClientForm({ initial }: { initial?: ClientFormValues }) {
         <Input name="allowedDomains" defaultValue={initial?.allowedDomains} placeholder="acme.com, shop.acme.com" className="font-mono" />
       </Field>
 
+      <div className="sm:col-span-2 flex items-center gap-3">
+        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+        <Status state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function BrandingForm({ initial }: { initial: { brandName: string; brandLogoUrl: string; brandColor: string; hidePoweredBy: boolean; reviewDomain: string } }) {
+  const [state, action, pending] = useActionState(saveBranding, null);
+  return (
+    <form action={action} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <Field label="Agency name" hint="(shown to clients)">
+        <Input name="brandName" defaultValue={initial.brandName} placeholder="Studio North" />
+      </Field>
+      <Field label="Logo URL" hint="(https, PNG or SVG, ~24px tall)">
+        <Input name="brandLogoUrl" type="url" defaultValue={initial.brandLogoUrl} placeholder="https://cdn.studio.com/logo.svg" className="font-mono" />
+      </Field>
+      <Field label="Accent color" hint="(hex)">
+        <Input name="brandColor" defaultValue={initial.brandColor} placeholder="#4F46E5" className="font-mono" />
+      </Field>
+      <Field label="Review domain" hint="(CNAME to your deployment; routing lands with hosting)">
+        <Input name="reviewDomain" defaultValue={initial.reviewDomain} placeholder="review.studio.com" className="font-mono" />
+      </Field>
+      <Label className="sm:col-span-2 flex items-center gap-2">
+        <Checkbox name="hidePoweredBy" defaultChecked={initial.hidePoweredBy} /> Hide “powered by Sendprova” on client pages
+      </Label>
       <div className="sm:col-span-2 flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
         <Status state={state} />

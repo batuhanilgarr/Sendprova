@@ -10,7 +10,8 @@ import { newToken } from "@/lib/share";
 import { requireProjectAccess } from "@/lib/session";
 import { sendFromWorkspace } from "@/lib/notify";
 import { appUrl } from "@/lib/review";
-import { shareUrl } from "@/lib/share";
+import { portalUrl, shareUrl } from "@/lib/share";
+import { brandForWorkspace } from "@/lib/branding";
 
 export async function createShareAction(form: FormData) {
   const projectId = String(form.get("projectId"));
@@ -142,6 +143,7 @@ export async function notifyClientAction(_prev: NotifyState, form: FormData): Pr
     let share = await db.shareLink.findFirst({ where: { projectId, revokedAt: null }, orderBy: { createdAt: "desc" } });
     if (!share) share = await db.shareLink.create({ data: { projectId, token: newToken() } });
     const latest = await db.version.findFirstOrThrow({ where: { projectId }, orderBy: { number: "desc" } });
+    const brand = await brandForWorkspace(project.workspaceId);
     const text = [
       `Hi${client.contactName ? ` ${client.contactName}` : ""},`,
       "",
@@ -150,9 +152,10 @@ export async function notifyClientAction(_prev: NotifyState, form: FormData): Pr
       "",
       "Open the link, click Comment to pin notes on the email, then Approve or Request changes. No account needed.",
       message ? `\n${message}\n` : "",
-      `— ${user.name || user.email}`,
+      client.portalToken ? `All your projects with ${brand.name}: ${portalUrl(client.portalToken)}\n` : "",
+      `— ${user.name || user.email}, ${brand.name}`,
       "",
-      `Sent with Sendprova · ${appUrl()}`,
+      brand.hidePoweredBy ? "" : `Sent with Sendprova · ${appUrl()}`,
     ].join("\n");
     await sendFromWorkspace(project.workspaceId, client.contactEmail, { subject: `Please review: ${project.name} (v${latest.number})`, text });
     if (project.status === "DRAFT") await db.project.update({ where: { id: projectId }, data: { status: "IN_REVIEW" } });

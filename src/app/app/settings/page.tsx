@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { currentWorkspace } from "@/lib/session";
 import { ensureDefaultSender, smtpConfigSchema } from "@/lib/mailer";
-import { deleteClient, deleteGroup, deleteSender, setDefaultSender } from "./actions";
-import { ClientForm, GroupForm, SenderForm, TestConnectionButton } from "./forms";
+import { deleteClient, deleteGroup, deleteSender, ensurePortalLink, revokePortalLink, setDefaultSender } from "./actions";
+import { BrandingForm, ClientForm, GroupForm, SenderForm, TestConnectionButton } from "./forms";
+import { CopyField } from "@/components/copy-field";
+import { portalUrl } from "@/lib/share";
 
 export const metadata = { title: "Settings" };
 
@@ -15,6 +17,9 @@ export default function SettingsPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 flex flex-col gap-10">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
+        <Branding />
+      </Suspense>
+      <Suspense fallback={null}>
         <Clients />
       </Suspense>
       <Suspense fallback={null}>
@@ -173,6 +178,27 @@ async function Clients() {
                 </Button>
               </form>
             </div>
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b bg-muted/30">
+              <span className="text-xs text-muted-foreground">Client portal</span>
+              {c.portalToken ? (
+                <>
+                  <CopyField value={portalUrl(c.portalToken)} className="flex-1 min-w-60" />
+                  <form action={revokePortalLink}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <Button type="submit" variant="ghost" size="xs">
+                      Revoke
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <form action={ensurePortalLink}>
+                  <input type="hidden" name="id" value={c.id} />
+                  <Button type="submit" variant="outline" size="xs">
+                    Create portal link
+                  </Button>
+                </form>
+              )}
+            </div>
             <details>
               <summary className="cursor-pointer px-4 py-2 text-muted-foreground select-none">Edit</summary>
               <div className="px-4 pb-4">
@@ -201,6 +227,27 @@ async function Clients() {
           <ClientForm />
         </li>
       </ul>
+    </section>
+  );
+}
+
+async function Branding() {
+  await connection();
+  const workspace = await currentWorkspace();
+  return (
+    <section>
+      <SectionHeader title="Agency branding" description="Review pages and the client portal carry your name, logo and color instead of Sendprova's." />
+      <div className="rounded-xl border bg-card p-4">
+        <BrandingForm
+          initial={{
+            brandName: workspace.brandName ?? "",
+            brandLogoUrl: workspace.brandLogoUrl ?? "",
+            brandColor: workspace.brandColor ?? "",
+            hidePoweredBy: workspace.hidePoweredBy,
+            reviewDomain: workspace.reviewDomain ?? "",
+          }}
+        />
+      </div>
     </section>
   );
 }

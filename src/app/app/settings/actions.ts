@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { currentWorkspace } from "@/lib/session";
 import { parseEmails, smtpConfigSchema, verifySender } from "@/lib/mailer";
+import { newToken } from "@/lib/share";
 
 export type ActionState = { ok?: string; error?: string } | null;
 
@@ -157,4 +158,46 @@ export async function deleteClient(form: FormData) {
   await db.client.delete({ where: { id: String(form.get("id")), workspaceId: workspace.id } });
   revalidatePath("/app/settings");
   revalidatePath("/app");
+}
+
+const brandingSchema = z.object({
+  brandName: z.string().trim().max(80).optional().default(""),
+  brandLogoUrl: z.string().trim().url("Logo must be a full https:// URL").max(500).optional().or(z.literal("")),
+  brandColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex color like #4F46E5").optional().or(z.literal("")),
+  reviewDomain: z.string().trim().toLowerCase().max(120).optional().default(""),
+});
+
+export async function saveBranding(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const parsed = brandingSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { brandName, brandLogoUrl, brandColor, reviewDomain } = parsed.data;
+  const workspace = await currentWorkspace();
+  await db.workspace.update({
+    where: { id: workspace.id },
+    data: {
+      brandName: brandName || null,
+      brandLogoUrl: brandLogoUrl || null,
+      brandColor: brandColor || null,
+      hidePoweredBy: form.get("hidePoweredBy") === "on",
+      reviewDomain: reviewDomain.replace(/^https?:\/\//, "").replace(/\/.*$/, "") || null,
+    },
+  });
+  revalidatePath("/app/settings");
+  return { ok: "Branding saved." };
+}
+
+/** Create (or keep) the client's portal token and return nothing; the page re-renders with the link. */
+export async function ensurePortalLink(form: FormData) {
+  const id = String(form.get("id"));
+  const workspace = await currentWorkspace();
+  const client = await db.client.findUniqueOrThrow({ where: { id, workspaceId: workspace.id } });
+  if (!client.portalToken) await db.client.update({ where: { id }, data: { portalToken: newToken() } });
+  revalidatePath("/app/settings");
+}
+
+export async function revokePortalLink(form: FormData) {
+  const id = String(form.get("id"));
+  const workspace = await currentWorkspace();
+  await db.client.update({ where: { id, workspaceId: workspace.id }, data: { portalToken: null } });
+  revalidatePath("/app/settings");
 }

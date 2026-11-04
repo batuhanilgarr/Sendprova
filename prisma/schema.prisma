@@ -16,6 +16,12 @@ model Workspace {
   owner     User?     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   /// Cached balance; every change also writes a CreditLedger row.
   credits   Int       @default(0)
+  // ---- agency branding shown on review pages and the client portal ----
+  brandName      String?
+  brandLogoUrl   String?
+  brandColor     String?
+  hidePoweredBy  Boolean   @default(false)
+  reviewDomain   String?
   createdAt DateTime  @default(now())
   projects  Project[]
   senders   SenderProfile[]
@@ -42,6 +48,8 @@ model Client {
   unsubscribeToken     String?  // placeholder or URL fragment that must be present
   utmTemplate          String?  // e.g. utm_source=newsletter&utm_medium=email
   allowedDomains       String[] // links must point at these hosts
+  /// Token for the client's portal (all their projects in one link).
+  portalToken  String?   @unique
   createdAt    DateTime  @default(now())
   projects     Project[]
 

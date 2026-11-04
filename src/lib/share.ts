@@ -23,3 +23,8 @@ export function shareUrl(token: string) {
   const base = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   return `${base}/s/${token}`;
 }
+
+export function portalUrl(token: string) {
+  const base = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return `${base}/c/${token}`;
+}
